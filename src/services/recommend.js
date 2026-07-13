@@ -109,7 +109,7 @@ function resourceRecommendations(userId, limit = 6) {
   const all = db.prepare(
     `SELECT id, user_id, title, description, course_name, course_code, category, institution,
             public_username, upvotes_count, views_count, downloads_count, created_at
-     FROM resources`
+     FROM resources WHERE moderation_status = 'Approved'`
   ).all();
 
   const scored = all.map(r => {

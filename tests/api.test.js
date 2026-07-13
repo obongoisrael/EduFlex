@@ -62,7 +62,7 @@ function check(name, cond, detail = '') {
   check('student registration succeeds', r.status === 201);
   r = await api('GET', '/api/admin/stats');
   check('students are blocked from admin stats', r.status === 403);
-  r = await api('POST', '/api/auth/login', { email, password: 'secret123' });
+  await api('POST', '/api/auth/logout');
   r = await api('GET', '/api/auth/me');
   check('dashboard blocked when logged out', r.status === 401);
   r = await api('POST', '/api/auth/login', { email, password: 'wrong' });

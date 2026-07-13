@@ -52,8 +52,9 @@ router.get('/', safe((req, res) => {
             r.file_size, r.upvotes_count, r.views_count, r.downloads_count,
             r.created_at, r.user_id,
             EXISTS(SELECT 1 FROM resource_votes v WHERE v.resource_id = r.id AND v.user_id = ?) AS voted_by_me
-     FROM resources r WHERE r.moderation_status = 'Approved'`;
-  const params = [req.session.userId];
+     FROM resources r
+     WHERE (r.moderation_status = 'Approved' OR r.user_id = ?)`; // owners always see their own uploads
+  const params = [req.session.userId, req.session.userId];
 
   if (mine === '1') { sql += ' AND r.user_id = ?'; params.push(req.session.userId); }
   if (search) {

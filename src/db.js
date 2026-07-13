@@ -17,6 +17,9 @@ const db = new DatabaseSync(path.join(DATA_DIR, 'eduflex.db'));
 
 // Enforce foreign keys (off by default in SQLite)
 db.exec('PRAGMA foreign_keys = ON;');
+// Wait up to 5s when another process holds the write lock (e.g. the test
+// runner promoting an admin while the server is running) instead of failing.
+db.exec('PRAGMA busy_timeout = 5000;');
 
 /**
  * Schema. Datetimes are stored as local "YYYY-MM-DDTHH:MM" strings
@@ -105,7 +108,7 @@ CREATE TABLE IF NOT EXISTS resources (
   file_type          TEXT DEFAULT '',
   file_size          INTEGER DEFAULT 0,
   upvotes_count      INTEGER NOT NULL DEFAULT 0,
-  moderation_status  TEXT NOT NULL DEFAULT 'Pending',
+  moderation_status  TEXT NOT NULL DEFAULT 'Approved',  -- auto-approved; admins can Reject
   moderation_note    TEXT DEFAULT '',
   created_at         TEXT NOT NULL,
   updated_at         TEXT NOT NULL
@@ -156,7 +159,10 @@ function addColumnIfMissing(table, column, definition) {
 addColumnIfMissing('users', 'role', "TEXT NOT NULL DEFAULT 'student'");
 addColumnIfMissing('users', 'account_status', "TEXT NOT NULL DEFAULT 'active'");
 addColumnIfMissing('users', 'last_login_at', 'TEXT');
-addColumnIfMissing('resources', 'moderation_status', "TEXT NOT NULL DEFAULT 'Pending'");
+addColumnIfMissing('resources', 'moderation_status', "TEXT NOT NULL DEFAULT 'Approved'");
+// One-time migration from the old pending-by-default model: uploads are
+// auto-approved (instant sharing); admins moderate by rejecting/deleting.
+db.exec("UPDATE resources SET moderation_status = 'Approved' WHERE moderation_status = 'Pending'");
 addColumnIfMissing('resources', 'moderation_note', 'TEXT DEFAULT ""');
 
 // Alarm reminders (sessions + deadlines)

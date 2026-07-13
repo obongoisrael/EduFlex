@@ -69,7 +69,7 @@ function matchLibraryResources(userId, courseName, courseCode, topicTitles, limi
   const all = db.prepare(
     `SELECT id, title, course_name, course_code, category, institution, public_username,
             upvotes_count, views_count, downloads_count, created_at, description, file_type
-     FROM resources`
+     FROM resources WHERE moderation_status = 'Approved'`
   ).all();
   return all.map(r => {
     const rTokens = [...tokens(r.title), ...tokens(r.course_name), ...tokens(r.course_code)];
