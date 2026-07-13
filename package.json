@@ -1,0 +1,23 @@
+{
+  "name": "eduflex",
+  "version": "1.0.0",
+  "description": "EduFlex - Adaptive Learning and Resource Management System for Colleges and Universities",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "seed": "node src/seed.js"
+  },
+  "keywords": [
+    "education",
+    "scheduling",
+    "study",
+    "resources"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "express": "^4.21.2",
+    "express-session": "^1.18.1",
+    "multer": "^2.0.1"
+  }
+}
