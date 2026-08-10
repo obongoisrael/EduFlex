@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#4f46e5" />
+  <title>Register — EduFlex</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family:'Inter', system-ui, sans-serif; -webkit-tap-highlight-color:transparent; }
+    .inp { width:100%; border:1px solid #e2e8f0; border-radius:.875rem; padding:.8rem 1rem; font-size:1rem; min-height:3rem; transition:border-color .15s, box-shadow .15s; }
+    .inp:focus { outline:none; border-color:#6366f1; box-shadow:0 0 0 3px rgba(99,102,241,.15); }
+    .btn-primary { background:linear-gradient(135deg,#4f46e5,#4338ca); color:#fff; box-shadow:0 8px 24px -8px rgba(79,70,229,.7);
+                   border-radius:.875rem; padding:.85rem 1.5rem; min-height:3rem; font-weight:600; width:100%; transition:transform .12s; }
+    .btn-primary:active { transform:scale(.98); }
+    .btn-primary:disabled { opacity:.6; }
+  </style>
+</head>
+<body class="bg-gradient-to-b from-indigo-50 via-white to-white min-h-screen flex flex-col">
+
+  <header class="h-16 flex items-center px-5">
+    <a href="/" class="flex items-center gap-2.5">
+      <span class="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white grid place-items-center font-extrabold text-lg shadow-lg shadow-indigo-500/30">E</span>
+      <span class="font-bold text-xl text-slate-900">EduFlex</span>
+    </a>
+  </header>
+
+  <main class="flex-1 flex items-center justify-center px-4 py-8">
+    <div class="w-full max-w-lg">
+      <div class="bg-white rounded-3xl shadow-xl shadow-slate-200/60 border border-slate-100 p-6 sm:p-8">
+        <h1 class="text-2xl font-bold text-slate-900">Create your account</h1>
+        <p class="text-sm text-slate-500 mt-1">You'll appear publicly by your initials only — your full name stays private.</p>
+
+        <div id="error" class="hidden mt-5 text-sm bg-rose-50 text-rose-700 border border-rose-100 rounded-xl px-4 py-3"></div>
+
+        <form id="regForm" class="mt-6 space-y-4" novalidate>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1.5" for="first_name">First name</label>
+              <input id="first_name" type="text" required autocomplete="given-name" class="inp" placeholder="John">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1.5" for="last_name">Last name</label>
+              <input id="last_name" type="text" required autocomplete="family-name" class="inp" placeholder="Doe">
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3 bg-indigo-50 border border-indigo-100 rounded-2xl px-4 py-3">
+            <span id="initialsPreview" class="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white grid place-items-center font-bold shrink-0">?</span>
+            <p class="text-xs text-indigo-800 leading-relaxed">Your public username will be <strong id="initialsText">—</strong>. This is what other students see next to your shared resources.</p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5" for="email">Email address</label>
+            <input id="email" type="email" required autocomplete="email" inputmode="email" class="inp" placeholder="you@university.ac.ke">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5" for="password">Password <span class="text-slate-400 font-normal">(min 6 characters)</span></label>
+            <input id="password" type="password" required minlength="6" autocomplete="new-password" class="inp" placeholder="••••••••">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5" for="institution">Institution name</label>
+            <input id="institution" type="text" required class="inp" placeholder="e.g. Kenyatta University">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5" for="programme">Programme / course of study</label>
+            <input id="programme" type="text" required class="inp" placeholder="e.g. BSc Computer Science">
+          </div>
+
+          <button type="submit" id="submitBtn" class="btn-primary">Create account</button>
+        </form>
+
+        <p class="text-sm text-slate-500 mt-6 text-center">
+          Already have an account?
+          <a href="/login.html" class="text-indigo-600 font-semibold hover:underline">Log in</a>
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const errBox = $('error'), btn = $('submitBtn');
+
+    function updateInitials() {
+      const a = ($('first_name').value.trim()[0] || '').toUpperCase();
+      const b = ($('last_name').value.trim()[0] || '').toUpperCase();
+      const initials = (a + b) || '?';
+      $('initialsPreview').textContent = initials;
+      $('initialsText').textContent = initials === '?' ? '—' : initials;
+    }
+    $('first_name').addEventListener('input', updateInitials);
+    $('last_name').addEventListener('input', updateInitials);
+
+    $('regForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errBox.classList.add('hidden');
+      const body = {
+        first_name: $('first_name').value.trim(),
+        last_name: $('last_name').value.trim(),
+        email: $('email').value.trim(),
+        password: $('password').value,
+        institution: $('institution').value.trim(),
+        programme: $('programme').value.trim(),
+      };
+      if (!body.first_name || !body.last_name) return showError('Please enter your full name.');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) return showError('Please enter a valid email address.');
+      if (body.password.length < 6) return showError('Password must be at least 6 characters.');
+      if (!body.institution) return showError('Please enter your institution.');
+      if (!body.programme) return showError('Please enter your programme of study.');
+
+      btn.disabled = true; btn.textContent = 'Creating account…';
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Registration failed.');
+        location.href = '/app.html#/setup';
+      } catch (err) {
+        showError(err.message);
+        btn.disabled = false; btn.textContent = 'Create account';
+      }
+    });
+
+    function showError(msg) { errBox.textContent = msg; errBox.classList.remove('hidden'); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  </script>
+</body>
+</html>
