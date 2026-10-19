@@ -1,10 +1,13 @@
 /**
  * Outgoing email (verification + password reset links).
  *
- * Real sending: set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS and MAIL_FROM in .env
- * (any SMTP provider works — e.g. Gmail with an app password, Brevo, SendGrid, Mailgun).
+ * Real sending, first match wins:
+ *  1. Brevo over HTTPS — set BREVO_API_KEY and MAIL_FROM (a sender verified in Brevo).
+ *     Works on hosts that block outgoing SMTP ports (e.g. Render's free plan).
+ *  2. SMTP — set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS and MAIL_FROM
+ *     (e.g. Gmail with an app password).
  *
- * Without SMTP settings (local development) the email is printed to the server
+ * With neither (local development) the email is printed to the server
  * console instead, so the link can still be clicked. The test runner also sets
  * EDUFLEX_MAIL_OUTBOX, a file each email is appended to as one JSON line.
  */
@@ -13,8 +16,38 @@ const nodemailer = require('nodemailer');
 
 let transport = null;
 
-function smtpConfigured() {
-  return !!process.env.SMTP_HOST;
+const BREVO_URL = 'https://api.brevo.com/v3';
+
+function brevoConfigured() { return !!process.env.BREVO_API_KEY; }
+function smtpConfigured() { return !!process.env.SMTP_HOST; }
+/** Is any real email provider configured? */
+function mailConfigured() { return brevoConfigured() || smtpConfigured(); }
+/** Human-readable description of the active provider (for npm run test-email). */
+function mailProvider() {
+  if (brevoConfigured()) return 'Brevo (HTTPS API)';
+  if (smtpConfigured()) return `${process.env.SMTP_HOST}:${process.env.SMTP_PORT || 587} as ${process.env.SMTP_USER || '(no login)'}`;
+  return 'none (emails are printed to the console)';
+}
+
+/** "EduFlex <a@b.com>" → { name: 'EduFlex', email: 'a@b.com' } */
+function parseFrom(from) {
+  const m = String(from || '').match(/^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/);
+  return m ? { name: m[1].trim() || 'EduFlex', email: m[2].trim() } : { name: 'EduFlex', email: String(from || '').trim() };
+}
+
+async function brevoRequest(path, init = {}) {
+  const res = await fetch(BREVO_URL + path, {
+    ...init,
+    headers: { 'api-key': process.env.BREVO_API_KEY, 'content-type': 'application/json', accept: 'application/json', ...(init.headers || {}) },
+    signal: AbortSignal.timeout(20000),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(`Brevo ${res.status}: ${data.message || data.code || 'request failed'}`);
+    err.code = res.status === 401 ? 'EAUTH' : 'EBREVO';
+    throw err;
+  }
+  return data;
 }
 
 function getTransport() {
@@ -34,9 +67,16 @@ async function sendMail({ to, subject, text, html }) {
   if (process.env.EDUFLEX_MAIL_OUTBOX) {
     fs.appendFileSync(process.env.EDUFLEX_MAIL_OUTBOX, JSON.stringify({ to, subject, text }) + '\n');
   }
+  if (brevoConfigured()) {
+    await brevoRequest('/smtp/email', {
+      method: 'POST',
+      body: JSON.stringify({ sender: parseFrom(process.env.MAIL_FROM), to: [{ email: to }], subject, textContent: text, htmlContent: html || undefined }),
+    });
+    return;
+  }
   if (!smtpConfigured()) {
     if (!process.env.EDUFLEX_MAIL_OUTBOX) {
-      console.log(`\n📧 Email (SMTP not configured — shown here instead)\n   To: ${to}\n   Subject: ${subject}\n\n${text}\n`);
+      console.log(`\n📧 Email (no email provider configured — shown here instead)\n   To: ${to}\n   Subject: ${subject}\n\n${text}\n`);
     }
     return;
   }
@@ -91,9 +131,10 @@ async function sendPasswordResetEmail(user, link) {
   });
 }
 
-/** Check the SMTP login without sending anything (used by `npm run test-email`). */
+/** Check the provider login without sending anything (used by `npm run test-email`). */
 async function verifyConnection() {
+  if (brevoConfigured()) return brevoRequest('/account');
   return getTransport().verify();
 }
 
-module.exports = { sendMail, smtpConfigured, verifyConnection, appUrl, sendVerificationEmail, sendPasswordResetEmail };
+module.exports = { sendMail, smtpConfigured, mailConfigured, mailProvider, verifyConnection, appUrl, sendVerificationEmail, sendPasswordResetEmail };

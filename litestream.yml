@@ -1,0 +1,18 @@
+# Litestream: continuous backup of the EduFlex database to S3-compatible storage
+# (Cloudflare R2, Backblaze B2, AWS S3, ...). Used on hosting without a persistent
+# disk, e.g. Render's free plan — see scripts/render-start.sh.
+#
+# Every change is streamed to the bucket within about a second; on each start the
+# latest copy is restored first. Values come from environment variables:
+#   LITESTREAM_REPLICA_URL         e.g. s3://eduflex-backup/db?endpoint=https://<account>.r2.cloudflarestorage.com&region=auto
+#   LITESTREAM_ACCESS_KEY_ID       bucket access key
+#   LITESTREAM_SECRET_ACCESS_KEY   bucket secret key
+#   EDUFLEX_DB_PATH                set by scripts/render-start.sh
+
+access-key-id: ${LITESTREAM_ACCESS_KEY_ID}
+secret-access-key: ${LITESTREAM_SECRET_ACCESS_KEY}
+
+dbs:
+  - path: ${EDUFLEX_DB_PATH}
+    replica:
+      url: ${LITESTREAM_REPLICA_URL}

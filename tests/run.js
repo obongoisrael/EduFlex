@@ -85,6 +85,7 @@ async function waitForServer(url, server, ms = 20000) {
     ANTHROPIC_AUTH_TOKEN: '',
     // Email: never really sent in tests (SMTP off); each message is written to an outbox file instead
     SMTP_HOST: '',
+    BREVO_API_KEY: '',
     EDUFLEX_MAIL_OUTBOX: path.join(tmp, 'outbox.jsonl'),
     APP_URL: `http://localhost:${port}`,
     EDUFLEX_SKIP_MX_CHECK: '1', // test domains have no real mail servers

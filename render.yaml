@@ -7,8 +7,9 @@ services:
     # A persistent disk (needed so the database and uploaded PDFs survive restarts
     # and redeploys) requires a paid instance; the free plan wipes data.
     plan: starter
-    buildCommand: npm ci
-    startCommand: npm start
+    # Scripts also download/run Litestream (database backup) when LITESTREAM_REPLICA_URL is set
+    buildCommand: bash scripts/render-build.sh
+    startCommand: bash scripts/render-start.sh
     healthCheckPath: /
     disk:
       name: eduflex-data
@@ -42,4 +43,14 @@ services:
       - key: GOOGLE_CLIENT_SECRET
         sync: false
       - key: ANTHROPIC_API_KEY
+        sync: false
+      # Email over HTTPS (works where SMTP ports are blocked, e.g. the free plan)
+      - key: BREVO_API_KEY
+        sync: false
+      # Free plan only (no disk): continuous database backup to S3-compatible storage
+      - key: LITESTREAM_REPLICA_URL
+        sync: false
+      - key: LITESTREAM_ACCESS_KEY_ID
+        sync: false
+      - key: LITESTREAM_SECRET_ACCESS_KEY
         sync: false

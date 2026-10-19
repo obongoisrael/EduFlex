@@ -143,8 +143,7 @@ function seedIfEmpty() {
   let votes = 0;
   const insertVote = db.prepare('INSERT INTO resource_votes (user_id, resource_id, created_at) VALUES (?,?,?)');
   for (const [uid, initials, inst, title, desc, cname, ccode, cat] of sampleResources) {
-    // create a small real PDF so viewing AND downloading work out of the box
-    const fname = `seed-${Math.random().toString(36).slice(2, 10)}.pdf`;
+    // create a small real PDF (stored in the database) so viewing AND downloading work out of the box
     const body = makeSimplePdf(title, [
       desc,
       '',
@@ -154,9 +153,9 @@ function seedIfEmpty() {
       '',
       '(Placeholder demonstration file.)',
     ]);
-    fs.writeFileSync(path.join(UPLOAD_DIR, fname), body);
     const rid = Number(insertResource.run(uid, title, desc, cname, ccode, cat, inst, initials,
-      fname, `${title.replace(/[^a-z0-9]+/gi, '_')}.pdf`, 'pdf', body.length, 0, ts, ts).lastInsertRowid);
+      'db', `${title.replace(/[^a-z0-9]+/gi, '_')}.pdf`, 'pdf', Buffer.byteLength(body), 0, ts, ts).lastInsertRowid);
+    db.prepare('INSERT INTO resource_files (resource_id, data) VALUES (?, ?)').run(rid, Buffer.from(body));
     // sprinkle some upvotes
     const voters = [demoId, peerId, peer2Id].filter(() => Math.random() > 0.4);
     for (const v of voters) {

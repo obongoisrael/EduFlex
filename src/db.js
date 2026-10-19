@@ -29,6 +29,9 @@ db.exec('PRAGMA foreign_keys = ON;');
 // Wait up to 5s when another process holds the write lock (e.g. the test
 // runner promoting an admin while the server is running) instead of failing.
 db.exec('PRAGMA busy_timeout = 5000;');
+// Write-ahead logging: required by Litestream (continuous backup on hosting
+// without a persistent disk) and lets reads run while a write is in progress.
+db.exec('PRAGMA journal_mode = WAL;');
 
 /**
  * Schema. Datetimes are stored as local "YYYY-MM-DDTHH:MM" strings
@@ -169,6 +172,15 @@ function addColumnIfMissing(table, column, definition) {
 const hadEmailVerification = db.prepare('PRAGMA table_info(users)').all().some(c => c.name === 'email_verified_at');
 addColumnIfMissing('users', 'email_verified_at', 'TEXT');
 if (!hadEmailVerification) db.exec('UPDATE users SET email_verified_at = created_at WHERE email_verified_at IS NULL');
+
+// Uploaded PDFs are stored inside the database, so they are backed up together with
+// everything else (older uploads may still live in the uploads folder — see resources.js).
+db.exec(`
+CREATE TABLE IF NOT EXISTS resource_files (
+  resource_id INTEGER PRIMARY KEY REFERENCES resources(id) ON DELETE CASCADE,
+  data        BLOB NOT NULL
+);
+`);
 
 // Sign in with Google: the account's stable Google user id ("sub")
 addColumnIfMissing('users', 'google_sub', 'TEXT');

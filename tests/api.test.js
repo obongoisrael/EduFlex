@@ -13,7 +13,7 @@ if (!process.env.EDUFLEX_TEST_RUN) {
 }
 const fs = require('fs');
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
-const { db, UPLOAD_DIR } = require('../src/db');
+const { db } = require('../src/db');
 
 let cookie = '';
 let passed = 0, failed = 0;
@@ -495,10 +495,12 @@ function check(name, cond, detail = '') {
 
   // 38. Admin deleting a resource also removes its file from disk
   await api('POST', '/api/auth/login', { email, password: 'secret123' });
-  const storedFile = db.prepare('SELECT file_url FROM resources WHERE id = ?').get(resourceId).file_url;
-  const storedPath = require('path').join(UPLOAD_DIR, storedFile);
+  const storedInDb = !!db.prepare('SELECT 1 FROM resource_files WHERE resource_id = ?').get(resourceId);
+  check('uploaded PDF is stored in the database (backed up with it)', storedInDb
+    && db.prepare('SELECT file_url FROM resources WHERE id = ?').get(resourceId).file_url === 'db');
   r = await api('DELETE', `/api/admin/resources/${resourceId}`);
-  check('admin deletes resource and its file', r.status === 200 && !require('fs').existsSync(storedPath));
+  check('admin deletes resource and its file', r.status === 200
+    && !db.prepare('SELECT 1 FROM resource_files WHERE resource_id = ?').get(resourceId));
 
   /* ===================== Premium (EduFlex Plus) ===================== */
 

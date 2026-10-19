@@ -13,7 +13,7 @@ const ROLES = ['student', 'admin'];
 
 /** Remove stored upload files once their resource rows are gone. */
 function unlinkUploads(fileUrls) {
-  for (const f of fileUrls) {
+  for (const f of fileUrls.filter(u => u && u !== 'db')) { // 'db' = stored in the database (deleted by cascade)
     const filePath = path.join(UPLOAD_DIR, path.basename(f)); // basename() blocks path traversal
     try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch (e) { console.error(e); }
   }

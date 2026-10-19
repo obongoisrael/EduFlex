@@ -4,3 +4,4 @@ uploads/
 *.log
 .env
 .idea/
+bin/

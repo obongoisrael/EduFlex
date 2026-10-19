@@ -21,18 +21,12 @@ const CATEGORIES = ['Notes', 'Slides', 'PDF', 'Past Paper', 'Assignment Guide', 
 // PDF only: guarantees every resource can be viewed in the browser AND downloaded.
 const ALLOWED_EXT = ['.pdf'];
 
-// Files are stored with a random name (never the user-supplied one) inside /uploads,
-// and only served through the authenticated /download route below.
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, UPLOAD_DIR),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    const name = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}${ext}`;
-    cb(null, name);
-  },
-});
+// Uploads are kept in memory, then stored in the resource_files table (backed up with
+// the rest of the database) and only served through the authenticated routes below.
+// file_url = FILE_IN_DB marks those; older uploads may still be files in UPLOAD_DIR.
+const FILE_IN_DB = 'db';
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 20 * 1024 * 1024 }, // 20 MB cap
   fileFilter: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
@@ -109,20 +103,29 @@ router.post('/', (req, res) => {
       const user = db.prepare('SELECT public_username, institution FROM users WHERE id = ?')
         .get(req.session.userId);
       const ts = nowISO();
-      const info = db.prepare(
-        `INSERT INTO resources (user_id, title, description, course_name, course_code, category,
-                                institution, public_username, file_url, file_original_name,
-                                file_type, file_size, upvotes_count, created_at, updated_at)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,0,?,?)`
-      ).run(
-        req.session.userId, title.trim(), (description || '').trim(),
-        course_name.trim(), (course_code || '').trim().toUpperCase(), category,
-        user.institution, user.public_username,
-        req.file.filename, req.file.originalname,
-        path.extname(req.file.originalname).slice(1).toLowerCase(), req.file.size,
-        ts, ts
-      );
-      res.status(201).json({ id: Number(info.lastInsertRowid) });
+      let id;
+      db.exec('BEGIN');
+      try {
+        id = Number(db.prepare(
+          `INSERT INTO resources (user_id, title, description, course_name, course_code, category,
+                                  institution, public_username, file_url, file_original_name,
+                                  file_type, file_size, upvotes_count, created_at, updated_at)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,0,?,?)`
+        ).run(
+          req.session.userId, title.trim(), (description || '').trim(),
+          course_name.trim(), (course_code || '').trim().toUpperCase(), category,
+          user.institution, user.public_username,
+          FILE_IN_DB, req.file.originalname,
+          path.extname(req.file.originalname).slice(1).toLowerCase(), req.file.size,
+          ts, ts
+        ).lastInsertRowid);
+        db.prepare('INSERT INTO resource_files (resource_id, data) VALUES (?, ?)').run(id, req.file.buffer);
+        db.exec('COMMIT');
+      } catch (e) {
+        db.exec('ROLLBACK');
+        throw e;
+      }
+      res.status(201).json({ id });
     } catch (e) {
       console.error(e);
       res.status(500).json({ error: 'Internal server error' });
@@ -137,14 +140,29 @@ function visibleResource(req) {
   ).get(Number(req.params.id), req.session.userId);
 }
 
+/** The stored file: { data } from the database, or { filePath } for older uploads on disk; null if gone. */
+function loadFile(r) {
+  if (r.file_url === FILE_IN_DB) {
+    const row = db.prepare('SELECT data FROM resource_files WHERE resource_id = ?').get(r.id);
+    return row ? { data: Buffer.from(row.data) } : null;
+  }
+  const filePath = path.join(UPLOAD_DIR, path.basename(r.file_url)); // basename() blocks path traversal
+  return fs.existsSync(filePath) ? { filePath } : null;
+}
+
+const safeFilename = (name) => name.replace(/[^\w.\- ]/g, '_');
+
 // GET /api/resources/:id/download — authenticated download (files are not public)
 router.get('/:id/download', safe((req, res) => {
   const r = visibleResource(req);
   if (!r) return res.status(404).json({ error: 'Resource not found.' });
-  const filePath = path.join(UPLOAD_DIR, path.basename(r.file_url)); // basename() blocks path traversal
-  if (!fs.existsSync(filePath)) return res.status(410).json({ error: 'File no longer available.' });
+  const file = loadFile(r);
+  if (!file) return res.status(410).json({ error: 'File no longer available.' });
   db.prepare('UPDATE resources SET downloads_count = downloads_count + 1 WHERE id = ?').run(r.id);
-  res.download(filePath, r.file_original_name);
+  if (file.filePath) return res.download(file.filePath, r.file_original_name);
+  res.attachment(safeFilename(r.file_original_name));
+  res.type(r.file_type || 'application/octet-stream');
+  res.end(file.data);
 }));
 
 // Types the browser can render inline; anything else falls back to download.
@@ -161,16 +179,21 @@ const INLINE_TYPES = {
 router.get('/:id/view', safe((req, res) => {
   const r = visibleResource(req);
   if (!r) return res.status(404).json({ error: 'Resource not found.' });
-  const filePath = path.join(UPLOAD_DIR, path.basename(r.file_url));
-  if (!fs.existsSync(filePath)) return res.status(410).json({ error: 'File no longer available.' });
+  const file = loadFile(r);
+  if (!file) return res.status(410).json({ error: 'File no longer available.' });
   db.prepare('UPDATE resources SET views_count = views_count + 1 WHERE id = ?').run(r.id);
 
   const mime = INLINE_TYPES[(r.file_type || '').toLowerCase()];
-  if (!mime) return res.download(filePath, r.file_original_name); // e.g. docx/pptx/zip → download
+  if (!mime) { // e.g. docx/pptx/zip → download
+    if (file.filePath) return res.download(file.filePath, r.file_original_name);
+    res.attachment(safeFilename(r.file_original_name));
+    return res.end(file.data);
+  }
 
   res.setHeader('Content-Type', mime);
-  res.setHeader('Content-Disposition', `inline; filename="${r.file_original_name.replace(/[^\w.\- ]/g, '_')}"`);
-  fs.createReadStream(filePath).pipe(res);
+  res.setHeader('Content-Disposition', `inline; filename="${safeFilename(r.file_original_name)}"`);
+  if (file.filePath) return fs.createReadStream(file.filePath).pipe(res);
+  res.end(file.data);
 }));
 
 // POST /api/resources/:id/vote — toggle upvote (one per user, enforced by UNIQUE constraint)
@@ -197,9 +220,11 @@ router.delete('/:id', safe((req, res) => {
   const r = db.prepare('SELECT * FROM resources WHERE id = ? AND user_id = ?')
     .get(Number(req.params.id), req.session.userId);
   if (!r) return res.status(404).json({ error: 'Resource not found (or not yours).' });
-  db.prepare('DELETE FROM resources WHERE id = ?').run(r.id);
-  const filePath = path.join(UPLOAD_DIR, path.basename(r.file_url));
-  if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  db.prepare('DELETE FROM resources WHERE id = ?').run(r.id); // cascades to resource_files
+  if (r.file_url !== FILE_IN_DB) {
+    const filePath = path.join(UPLOAD_DIR, path.basename(r.file_url));
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  }
   res.json({ ok: true });
 }));
 

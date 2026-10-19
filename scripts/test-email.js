@@ -8,13 +8,13 @@
  */
 try { process.loadEnvFile(); } catch { /* no .env — handled below */ }
 
-const { smtpConfigured, verifyConnection, sendMail } = require('../src/services/mailer');
+const { mailConfigured, mailProvider, verifyConnection, sendMail } = require('../src/services/mailer');
 
 const to = process.argv[2];
 
 (async () => {
-  if (!smtpConfigured()) {
-    console.error('\n✗ SMTP_HOST is empty. Add your email provider settings to .env first (see .env.example).\n');
+  if (!mailConfigured()) {
+    console.error('\n✗ No email provider set. Add BREVO_API_KEY, or SMTP_HOST and the rest, to .env first (see .env.example).\n');
     process.exit(1);
   }
   if (!to || !to.includes('@')) {
@@ -22,7 +22,7 @@ const to = process.argv[2];
     process.exit(1);
   }
 
-  console.log(`\nProvider: ${process.env.SMTP_HOST}:${process.env.SMTP_PORT || 587} as ${process.env.SMTP_USER || '(no login)'}`);
+  console.log(`\nProvider: ${mailProvider()}`);
   try {
     process.stdout.write('1. Logging in to the email provider… ');
     await verifyConnection();
@@ -40,7 +40,8 @@ const to = process.argv[2];
   } catch (err) {
     console.log('FAILED\n');
     const hints = {
-      EAUTH: 'The provider rejected the username/password. For Gmail, SMTP_PASS must be a 16-character App Password (not your normal password), and SMTP_USER your full Gmail address. For Brevo, use the SMTP login and SMTP key from Brevo → SMTP & API.',
+      EAUTH: 'The provider rejected the login. For Gmail, SMTP_PASS must be a 16-character App Password (not your normal password), and SMTP_USER your full Gmail address. For Brevo, BREVO_API_KEY must be an API key from Brevo → SMTP & API → API Keys.',
+      EBREVO: 'Brevo refused the email. Check that MAIL_FROM is a sender you verified in Brevo (Senders, domains & IPs → Senders) and that your Brevo account is activated.',
       ESOCKET: 'Could not open a secure connection. Use SMTP_PORT=587 (or 465) and check SMTP_HOST is spelled correctly.',
       ECONNECTION: 'Could not reach the email server. Check SMTP_HOST / SMTP_PORT and your internet connection (some networks block port 587 — try 465).',
       ETIMEDOUT: 'The email server did not answer in time. Your network may block this port — try SMTP_PORT=465, or another network.',
