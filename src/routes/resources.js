@@ -9,15 +9,13 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
-const { db, nowISO } = require('../db');
-const { requireAuth, safe } = require('../middleware');
+const { db, nowISO, UPLOAD_DIR } = require('../db');
+const { requireAuth, isPlus, safe } = require('../middleware');
 const { qualityScore } = require('../services/quality');
 
 const router = express.Router();
 router.use(requireAuth);
 
-const UPLOAD_DIR = path.join(__dirname, '..', '..', 'uploads');
-if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 const CATEGORIES = ['Notes', 'Slides', 'PDF', 'Past Paper', 'Assignment Guide', 'Other'];
 // PDF only: guarantees every resource can be viewed in the browser AND downloaded.
@@ -46,6 +44,10 @@ const upload = multer({
 // GET /api/resources?search=&category=&institution=&course=&sort=recent|top|quality&mine=1&top_quality=1
 router.get('/', safe((req, res) => {
   const { search, category, institution, course, sort, mine, top_quality } = req.query;
+  // Premium: the quality filter and quality ranking are EduFlex Plus features
+  if ((top_quality === '1' || sort === 'quality') && !isPlus(req.session.userId)) {
+    return res.status(402).json({ error: 'Quality filters are an EduFlex Plus feature.', premium: true });
+  }
   let sql =
     `SELECT r.id, r.title, r.description, r.course_name, r.course_code, r.category,
             r.institution, r.public_username, r.file_original_name, r.file_type,
@@ -128,9 +130,16 @@ router.post('/', (req, res) => {
   });
 });
 
+/** A resource the current user may open: approved, or their own upload (rejected files stay hidden). */
+function visibleResource(req) {
+  return db.prepare(
+    `SELECT * FROM resources WHERE id = ? AND (moderation_status = 'Approved' OR user_id = ?)`
+  ).get(Number(req.params.id), req.session.userId);
+}
+
 // GET /api/resources/:id/download — authenticated download (files are not public)
 router.get('/:id/download', safe((req, res) => {
-  const r = db.prepare('SELECT * FROM resources WHERE id = ?').get(Number(req.params.id));
+  const r = visibleResource(req);
   if (!r) return res.status(404).json({ error: 'Resource not found.' });
   const filePath = path.join(UPLOAD_DIR, path.basename(r.file_url)); // basename() blocks path traversal
   if (!fs.existsSync(filePath)) return res.status(410).json({ error: 'File no longer available.' });
@@ -150,7 +159,7 @@ const INLINE_TYPES = {
 
 // GET /api/resources/:id/view — open the file in the browser (new tab) instead of downloading
 router.get('/:id/view', safe((req, res) => {
-  const r = db.prepare('SELECT * FROM resources WHERE id = ?').get(Number(req.params.id));
+  const r = visibleResource(req);
   if (!r) return res.status(404).json({ error: 'Resource not found.' });
   const filePath = path.join(UPLOAD_DIR, path.basename(r.file_url));
   if (!fs.existsSync(filePath)) return res.status(410).json({ error: 'File no longer available.' });

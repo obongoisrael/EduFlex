@@ -1,10 +1,11 @@
 /** Schedule: generate plan, smart recommendations, missed-session recovery, upcoming list. */
 Views.schedule = async (el) => {
   const today = new Date().toISOString().slice(0, 10);
+  const plus = App.isPlus();
   const [{ sessions }, recs, { suggestions: recovery }] = await Promise.all([
     API.get(`/api/sessions?from=${today}`),
-    API.get('/api/smart/recommendations'),
-    API.get('/api/smart/recovery'),
+    plus ? API.get('/api/smart/recommendations') : { recommendations: [] },
+    plus ? API.get('/api/smart/recovery') : { suggestions: [] },
   ]);
   const upcoming = sessions.filter(s => s.status === 'Planned' || s.status === 'Rescheduled');
 
@@ -18,6 +19,12 @@ Views.schedule = async (el) => {
       <button id="genBtn" class="btn btn-primary btn-block sm:w-auto mt-4">⚡ Generate Study Schedule</button>
       <div id="genResult" class="hidden mt-4 text-sm rounded-2xl px-4 py-3"></div>
     </div>
+
+    ${plus ? '' : `
+      <a href="#/premium" class="card flex items-center gap-3 p-4 mt-4">
+        ${tintIcon('sparkle', 'fuchsia')}
+        <span class="flex-1 min-w-0"><span class="flex items-center gap-2 font-semibold text-slate-800 text-sm">Smart picks & missed-session recovery ${proBadge()}</span></span>
+      </a>`}
 
     ${recovery.length ? `
       <div class="bg-violet-50 border border-violet-200 rounded-2xl p-4 sm:p-5 mt-4">

@@ -68,6 +68,11 @@ router.put('/:id', safe((req, res) => {
   if (err) return res.status(400).json({ error: err });
   const b = req.body;
   if (b.status && !STATUSES.includes(b.status)) return res.status(400).json({ error: 'Invalid status.' });
+  if (b.course_id) {
+    const course = db.prepare('SELECT id FROM courses WHERE id = ? AND user_id = ?')
+      .get(Number(b.course_id), req.session.userId);
+    if (!course) return res.status(400).json({ error: 'Course not found (or not yours).' });
+  }
 
   db.prepare(
     `UPDATE deadlines SET course_id=?, title=?, type=?, due_date=?, priority=?, estimated_hours=?, status=?,

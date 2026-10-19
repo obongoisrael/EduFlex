@@ -61,7 +61,7 @@ router.get('/dashboard', safe((req, res) => {
 
   const recentResources = db.prepare(
     `SELECT id, title, category, course_name, institution, public_username, upvotes_count, created_at
-     FROM resources ORDER BY created_at DESC LIMIT 5`
+     FROM resources WHERE moderation_status = 'Approved' ORDER BY created_at DESC LIMIT 5`
   ).all();
 
   res.json({

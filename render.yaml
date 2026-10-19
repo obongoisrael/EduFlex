@@ -1,0 +1,45 @@
+# Render blueprint for EduFlex — Dashboard → New → Blueprint → pick this repository.
+# Render builds and starts the app from here, and redeploys on every push to GitHub.
+services:
+  - type: web
+    name: eduflex
+    runtime: node
+    # A persistent disk (needed so the database and uploaded PDFs survive restarts
+    # and redeploys) requires a paid instance; the free plan wipes data.
+    plan: starter
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /
+    disk:
+      name: eduflex-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Database + uploads live on the persistent disk
+      - key: EDUFLEX_DB_PATH
+        value: /var/data/eduflex.db
+      - key: EDUFLEX_UPLOAD_DIR
+        value: /var/data/uploads
+      - key: SESSION_SECRET
+        generateValue: true
+      # The values below are entered in the Render dashboard (never committed)
+      - key: APP_URL            # e.g. https://eduflex.onrender.com
+        sync: false
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "465"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false

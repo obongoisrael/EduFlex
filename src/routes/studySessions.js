@@ -52,6 +52,8 @@ router.patch('/:id', safe((req, res) => {
     newStart = start_datetime || s.start_datetime;
     newEnd = end_datetime || s.end_datetime;
     if (newEnd <= newStart) return res.status(400).json({ error: 'End must be after start.' });
+    if (start_datetime && new Date(newStart) < new Date())
+      return res.status(400).json({ error: 'Cannot reschedule into the past.' });
     if (!status) newStatus = 'Rescheduled';
   }
 

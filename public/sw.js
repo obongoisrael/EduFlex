@@ -3,10 +3,11 @@
  * Caches the app shell so the app opens without internet; live data comes
  * from localStorage snapshots the app saves while online.
  */
-const CACHE = 'eduflex-shell-v1';
+const CACHE = 'eduflex-shell-v4';
 const SHELL = [
-  '/app.html', '/login.html', '/register.html', '/index.html',
+  '/app.html', '/login.html', '/register.html', '/index.html', '/forgot.html', '/reset.html',
   '/js/api.js', '/js/app.js',
+  '/js/views/create.js', '/js/views/more.js', '/js/views/premium.js',
   '/js/views/dashboard.js', '/js/views/courses.js', '/js/views/deadlines.js',
   '/js/views/availability.js', '/js/views/schedule.js', '/js/views/calendar.js',
   '/js/views/focus.js', '/js/views/resources.js', '/js/views/progress.js',

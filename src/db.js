@@ -10,10 +10,19 @@ const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
 const fs = require('fs');
 
-const DATA_DIR = path.join(__dirname, '..', 'data');
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+// Storage locations. Defaults are data/eduflex.db and uploads/; the test runner
+// (tests/run.js) points these at a throwaway folder so tests never touch real data.
+const DB_PATH = process.env.EDUFLEX_DB_PATH
+  ? path.resolve(process.env.EDUFLEX_DB_PATH)
+  : path.join(__dirname, '..', 'data', 'eduflex.db');
+const UPLOAD_DIR = process.env.EDUFLEX_UPLOAD_DIR
+  ? path.resolve(process.env.EDUFLEX_UPLOAD_DIR)
+  : path.join(__dirname, '..', 'uploads');
+for (const dir of [path.dirname(DB_PATH), UPLOAD_DIR]) {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+}
 
-const db = new DatabaseSync(path.join(DATA_DIR, 'eduflex.db'));
+const db = new DatabaseSync(DB_PATH);
 
 // Enforce foreign keys (off by default in SQLite)
 db.exec('PRAGMA foreign_keys = ON;');
@@ -155,6 +164,30 @@ function addColumnIfMissing(table, column, definition) {
   if (!cols.includes(column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
 }
 
+// Real authentication: email verification. Accounts that existed before
+// verification was introduced are grandfathered in as verified, so nobody is locked out.
+const hadEmailVerification = db.prepare('PRAGMA table_info(users)').all().some(c => c.name === 'email_verified_at');
+addColumnIfMissing('users', 'email_verified_at', 'TEXT');
+if (!hadEmailVerification) db.exec('UPDATE users SET email_verified_at = created_at WHERE email_verified_at IS NULL');
+
+// Sign in with Google: the account's stable Google user id ("sub")
+addColumnIfMissing('users', 'google_sub', 'TEXT');
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub ON users(google_sub) WHERE google_sub IS NOT NULL');
+
+// Single-use, expiring links for email verification and password reset (only a hash is stored)
+db.exec(`
+CREATE TABLE IF NOT EXISTS auth_tokens (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  purpose    TEXT NOT NULL CHECK (purpose IN ('verify','reset')),
+  token_hash TEXT NOT NULL UNIQUE,
+  expires_at TEXT NOT NULL,
+  used_at    TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_auth_tokens_user ON auth_tokens(user_id, purpose);
+`);
+
 // Admin ownership + moderation
 addColumnIfMissing('users', 'role', "TEXT NOT NULL DEFAULT 'student'");
 addColumnIfMissing('users', 'account_status', "TEXT NOT NULL DEFAULT 'active'");
@@ -164,6 +197,10 @@ addColumnIfMissing('resources', 'moderation_status', "TEXT NOT NULL DEFAULT 'App
 // auto-approved (instant sharing); admins moderate by rejecting/deleting.
 db.exec("UPDATE resources SET moderation_status = 'Approved' WHERE moderation_status = 'Pending'");
 addColumnIfMissing('resources', 'moderation_note', 'TEXT DEFAULT ""');
+
+// Premium (EduFlex Plus): 'free' | 'plus'; plan_expires_at NULL = no expiry
+addColumnIfMissing('users', 'plan', "TEXT NOT NULL DEFAULT 'free'");
+addColumnIfMissing('users', 'plan_expires_at', 'TEXT');
 
 // Alarm reminders (sessions + deadlines)
 addColumnIfMissing('study_sessions', 'reminder_enabled', 'INTEGER NOT NULL DEFAULT 0');
@@ -339,4 +376,4 @@ function makePublicUsername(firstName, lastName) {
   return `${a}${b}`;
 }
 
-module.exports = { db, nowISO, fmtLocal, makePublicUsername };
+module.exports = { db, nowISO, fmtLocal, makePublicUsername, DB_PATH, UPLOAD_DIR };

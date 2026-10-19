@@ -20,6 +20,29 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+/**
+ * Does this user row have EduFlex Plus right now?
+ * Admins always do; otherwise plan must be 'plus' and not expired.
+ */
+function planActive(u) {
+  if (!u) return false;
+  if (u.role === 'admin') return true;
+  if (u.plan !== 'plus') return false;
+  return !u.plan_expires_at || new Date(u.plan_expires_at) > new Date();
+}
+
+/** Is the given user id on Plus? */
+function isPlus(userId) {
+  const { db } = require('./db');
+  return planActive(db.prepare('SELECT role, plan, plan_expires_at FROM users WHERE id = ?').get(userId));
+}
+
+/** Blocks free users from premium routes (402 + premium flag so the client can show an upgrade prompt). */
+function requirePlus(req, res, next) {
+  if (isPlus(req.session.userId)) return next();
+  res.status(402).json({ error: 'This is an EduFlex Plus feature.', premium: true });
+}
+
 /** Small helper: run fn, convert thrown errors into a 500 JSON response. */
 function safe(fn) {
   return (req, res) => {
@@ -32,4 +55,4 @@ function safe(fn) {
   };
 }
 
-module.exports = { requireAuth, requireAdmin, safe };
+module.exports = { requireAuth, requireAdmin, requirePlus, planActive, isPlus, safe };

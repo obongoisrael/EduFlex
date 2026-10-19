@@ -23,6 +23,15 @@ Views.profile = async (el) => {
 
       <!-- Settings -->
       <div class="lg:col-span-2 space-y-4">
+        <a href="#/premium" class="card flex items-center gap-3 p-4">
+          ${tintIcon('crown', 'gold')}
+          <span class="flex-1 min-w-0">
+            <span class="block text-xs text-slate-400">Your plan</span>
+            <span class="block font-semibold text-slate-800">${App.isPlus() ? `EduFlex Plus${u.role === 'admin' ? ' · included with admin' : u.plan_expires_at ? ` · until ${fmtDate(u.plan_expires_at)}` : ''}` : 'Free'}</span>
+          </span>
+          ${App.isPlus() ? '' : '<span class="btn btn-primary btn-sm">Go Premium</span>'}
+        </a>
+
         <div class="card p-5 sm:p-6">
           <h3 class="font-bold text-slate-900">Profile settings</h3>
           <p class="text-xs text-slate-400 mt-1 mb-5">Changing your name updates your public initials automatically.</p>
@@ -37,8 +46,14 @@ Views.profile = async (el) => {
               ${field('Institution', `<input class="inp" id="pf_inst" required value="${esc(u.institution)}">`)}
               ${field('Programme', `<input class="inp" id="pf_prog" required value="${esc(u.programme)}">`)}
             </div>
-            ${field('New password <span class="text-slate-400 font-normal">(leave blank to keep)</span>',
-              `<input type="password" class="inp" id="pf_pass" minlength="6" placeholder="••••••••" autocomplete="new-password">`)}
+            <div class="grid sm:grid-cols-2 gap-3">
+              ${field(u.has_password ? 'New password <span class="text-slate-400 font-normal">(leave blank to keep)</span>'
+                : 'Set a password <span class="text-slate-400 font-normal">(optional — you sign in with Google)</span>',
+                `<input type="password" class="inp" id="pf_pass" minlength="8" placeholder="••••••••" autocomplete="new-password">`)}
+              ${u.has_password ? field('Current password <span class="text-slate-400 font-normal">(to change it)</span>',
+                `<input type="password" class="inp" id="pf_current" placeholder="••••••••" autocomplete="current-password">`) : ''}
+            </div>
+            <p class="text-xs text-slate-400 -mt-2">New passwords need at least 8 characters, with letters and numbers.</p>
             <div class="flex justify-end">
               <button type="submit" class="btn btn-primary btn-block sm:w-auto">Save changes</button>
             </div>
@@ -48,12 +63,12 @@ Views.profile = async (el) => {
         <div class="card p-5 sm:p-6 space-y-4">
           <h3 class="font-bold text-slate-900 text-sm">Notifications &amp; privacy</h3>
           <label class="flex items-center justify-between gap-3 text-sm text-slate-700 cursor-pointer">
-            <span>🔔 Browser notifications for reminders</span>
-            <input type="checkbox" id="np_browser" ${prefs.browser ? 'checked' : ''} class="w-5 h-5 rounded border-slate-300 text-indigo-600 shrink-0">
+            <span>🔔 Browser notifications for reminders ${App.isPlus() ? '' : proBadge()}</span>
+            <input type="checkbox" id="np_browser" ${prefs.browser && App.isPlus() ? 'checked' : ''} class="w-5 h-5 rounded border-slate-300 text-indigo-600 shrink-0">
           </label>
           <label class="flex items-center justify-between gap-3 text-sm text-slate-700 cursor-pointer">
-            <span>🔊 Alarm sound with reminders</span>
-            <input type="checkbox" id="np_sound" ${prefs.sound !== false ? 'checked' : ''} class="w-5 h-5 rounded border-slate-300 text-indigo-600 shrink-0">
+            <span>🔊 Alarm sound with reminders ${App.isPlus() ? '' : proBadge()}</span>
+            <input type="checkbox" id="np_sound" ${prefs.sound !== false && App.isPlus() ? 'checked' : ''} class="w-5 h-5 rounded border-slate-300 text-indigo-600 shrink-0">
           </label>
           <label class="flex items-start justify-between gap-3 text-sm text-slate-700 cursor-pointer">
             <span>🤝 Allow Peer Study Matching<br><span class="text-xs text-slate-400">Shows only your initials + institution</span></span>
@@ -76,10 +91,16 @@ Views.profile = async (el) => {
       programme: document.getElementById('pf_prog').value.trim(),
     };
     const pass = document.getElementById('pf_pass').value;
-    if (pass) body.password = pass;
+    if (pass) {
+      body.password = pass;
+      const cur = document.getElementById('pf_current');
+      if (cur) body.current_password = cur.value;
+    }
     if (!body.first_name || !body.last_name || !body.institution || !body.programme)
       return toast('All fields are required.', 'error');
-    if (pass && pass.length < 6) return toast('Password must be at least 6 characters.', 'error');
+    if (pass && (pass.length < 8 || !/[a-z]/i.test(pass) || !/\d/.test(pass)))
+      return toast('New password needs at least 8 characters, with letters and numbers.', 'error');
+    if (pass && u.has_password && !body.current_password) return toast('Enter your current password to change it.', 'error');
     try {
       const { user } = await API.put('/api/auth/profile', body);
       App.user = user; App.renderUserChrome();
@@ -100,6 +121,13 @@ Views.profile = async (el) => {
       toast('Preferences saved.', 'info');
     } catch (err) { toast(err.message, 'error'); }
   };
+  // Browser notifications + alarm sound are Plus; free users get in-app reminders
+  for (const id of ['np_browser', 'np_sound']) {
+    if (!App.isPlus()) document.getElementById(id).addEventListener('change', (e) => {
+      e.stopImmediatePropagation(); e.target.checked = false;
+      showUpgrade('Alarm sounds and phone notifications are EduFlex Plus features. Free reminders appear inside the app.');
+    });
+  }
   document.getElementById('np_browser').onchange = async (e) => {
     if (e.target.checked && !(await App.enableBrowserNotifications())) { e.target.checked = false; return; }
     savePrefs();

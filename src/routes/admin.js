@@ -1,17 +1,22 @@
 const express = require('express');
-const { db, nowISO } = require('../db');
+const path = require('path');
+const fs = require('fs');
+const { db, nowISO, UPLOAD_DIR } = require('../db');
 const { requireAuth, requireAdmin, safe } = require('../middleware');
 
 const router = express.Router();
 router.use(requireAuth);
 router.use(requireAdmin);
 
-function normalizeStatus(value) {
-  return ['active', 'inactive', 'suspended'].includes(value) ? value : 'active';
-}
+const STATUSES = ['active', 'inactive', 'suspended'];
+const ROLES = ['student', 'admin'];
 
-function normalizeRole(value) {
-  return ['student', 'admin'].includes(value) ? value : 'student';
+/** Remove stored upload files once their resource rows are gone. */
+function unlinkUploads(fileUrls) {
+  for (const f of fileUrls) {
+    const filePath = path.join(UPLOAD_DIR, path.basename(f)); // basename() blocks path traversal
+    try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch (e) { console.error(e); }
+  }
 }
 
 // GET /api/admin/stats
@@ -22,7 +27,9 @@ router.get('/stats', safe((req, res) => {
       (SELECT COUNT(*) FROM users WHERE account_status = 'active') AS active_users,
       (SELECT COUNT(*) FROM resources) AS total_resources,
       (SELECT COUNT(*) FROM courses) AS total_courses,
-      (SELECT COUNT(*) FROM study_sessions) AS total_sessions
+      (SELECT COUNT(*) FROM study_sessions) AS total_sessions,
+      (SELECT COUNT(*) FROM users WHERE plan = 'plus'
+         AND (plan_expires_at IS NULL OR plan_expires_at > strftime('%Y-%m-%dT%H:%M:%fZ','now'))) AS plus_users
   `).get();
 
   const recentUsers = db.prepare(`
@@ -55,6 +62,7 @@ router.get('/stats', safe((req, res) => {
       total_resources: Number(totals.total_resources || 0),
       total_courses: Number(totals.total_courses || 0),
       total_sessions: Number(totals.total_sessions || 0),
+      plus_users: Number(totals.plus_users || 0),
     },
     recent_registrations: recentUsers,
     recent_resources: recentResources,
@@ -66,7 +74,8 @@ router.get('/stats', safe((req, res) => {
 router.get('/users', safe((req, res) => {
   const search = String(req.query.search || '').trim();
   let sql = `
-    SELECT id, first_name, last_name, public_username, email, institution, programme, role, account_status, last_login_at, created_at, updated_at
+    SELECT id, first_name, last_name, public_username, email, institution, programme, role, account_status,
+           plan, plan_expires_at, last_login_at, created_at, updated_at
     FROM users
   `;
   const params = [];
@@ -94,7 +103,10 @@ router.get('/users/:id', safe((req, res) => {
 // PATCH /api/admin/users/:id/status
 router.patch('/users/:id/status', safe((req, res) => {
   const userId = Number(req.params.id);
-  const status = normalizeStatus(String(req.body?.status || '').toLowerCase());
+  const status = String(req.body?.status || '').toLowerCase();
+  if (!STATUSES.includes(status)) return res.status(400).json({ error: 'Invalid status.' });
+  if (userId === req.session.userId && status !== 'active')
+    return res.status(400).json({ error: 'You cannot deactivate your own admin account.' });
   const user = db.prepare('SELECT id FROM users WHERE id = ?').get(userId);
   if (!user) return res.status(404).json({ error: 'User not found.' });
 
@@ -106,13 +118,33 @@ router.patch('/users/:id/status', safe((req, res) => {
 // PATCH /api/admin/users/:id/role
 router.patch('/users/:id/role', safe((req, res) => {
   const userId = Number(req.params.id);
-  const role = normalizeRole(String(req.body?.role || '').toLowerCase());
+  const role = String(req.body?.role || '').toLowerCase();
+  if (!ROLES.includes(role)) return res.status(400).json({ error: 'Invalid role.' });
+  if (userId === req.session.userId && role !== 'admin')
+    return res.status(400).json({ error: 'You cannot demote your own admin account.' });
   const user = db.prepare('SELECT id FROM users WHERE id = ?').get(userId);
   if (!user) return res.status(404).json({ error: 'User not found.' });
 
   db.prepare(`UPDATE users SET role = ?, updated_at = ? WHERE id = ?`).run(role, nowISO(), userId);
   const updated = db.prepare(`SELECT id, first_name, last_name, email, role, account_status FROM users WHERE id = ?`).get(userId);
   res.json({ user: updated });
+}));
+
+// PATCH /api/admin/users/:id/plan — grant or revoke EduFlex Plus
+// body: { plan: 'plus' | 'free', days?: number }  (days omitted/0 = no expiry)
+router.patch('/users/:id/plan', safe((req, res) => {
+  const userId = Number(req.params.id);
+  const plan = String(req.body?.plan || '').toLowerCase();
+  if (!['free', 'plus'].includes(plan)) return res.status(400).json({ error: 'Plan must be free or plus.' });
+  const days = Number(req.body?.days) || 0;
+  if (days < 0 || days > 3650) return res.status(400).json({ error: 'Days must be between 0 and 3650.' });
+  const user = db.prepare('SELECT id FROM users WHERE id = ?').get(userId);
+  if (!user) return res.status(404).json({ error: 'User not found.' });
+
+  const expires = plan === 'plus' && days > 0 ? new Date(Date.now() + days * 86400000).toISOString() : null;
+  db.prepare('UPDATE users SET plan = ?, plan_expires_at = ?, updated_at = ? WHERE id = ?')
+    .run(plan, expires, nowISO(), userId);
+  res.json({ user: db.prepare('SELECT id, email, plan, plan_expires_at FROM users WHERE id = ?').get(userId) });
 }));
 
 // DELETE /api/admin/users/:id
@@ -122,7 +154,9 @@ router.delete('/users/:id', safe((req, res) => {
   const user = db.prepare('SELECT id FROM users WHERE id = ?').get(userId);
   if (!user) return res.status(404).json({ error: 'User not found.' });
 
-  db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+  const files = db.prepare('SELECT file_url FROM resources WHERE user_id = ?').all(userId).map(r => r.file_url);
+  db.prepare('DELETE FROM users WHERE id = ?').run(userId); // cascades to their resources
+  unlinkUploads(files);
   res.json({ ok: true });
 }));
 
@@ -181,6 +215,7 @@ router.delete('/resources/:id', safe((req, res) => {
   if (!resource) return res.status(404).json({ error: 'Resource not found.' });
 
   db.prepare('DELETE FROM resources WHERE id = ?').run(resourceId);
+  unlinkUploads([resource.file_url]);
   res.json({ ok: true });
 }));
 

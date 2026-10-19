@@ -1,7 +1,10 @@
 /** Progress: weekly insight, totals, completion ring, 7-day chart, risk + per-course breakdown. */
 Views.progress = async (el) => {
+  const plus = App.isPlus();
   const [p, weekly, { risks }] = await Promise.all([
-    API.get('/api/stats/progress'), API.get('/api/smart/weekly'), API.get('/api/smart/risk'),
+    API.get('/api/stats/progress'),
+    plus ? API.get('/api/smart/weekly') : null,
+    plus ? API.get('/api/smart/risk') : { risks: [] },
   ]);
   const maxDaily = Math.max(1, ...p.daily.map(d => d.hours));
 
@@ -13,6 +16,11 @@ Views.progress = async (el) => {
     </div>`;
 
   el.innerHTML = `
+    ${!weekly ? `
+      <a href="#/premium" class="card flex items-center gap-3 p-4">
+        ${tintIcon('insights', 'fuchsia')}
+        <span class="flex-1 min-w-0"><span class="flex items-center gap-2 font-semibold text-slate-800 text-sm">Weekly insights & risk by deadline ${proBadge()}</span></span>
+      </a>` : `
     <div class="rounded-3xl p-5 sm:p-6 text-white bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-700 shadow-xl shadow-indigo-500/20">
       <h3 class="font-bold">📊 Weekly progress insight</h3>
       <p class="text-indigo-100 text-sm mt-2 leading-relaxed">${esc(weekly.insight_text)}</p>
@@ -23,7 +31,7 @@ Views.progress = async (el) => {
         ${weekly.most_studied ? `<span class="bg-white/15 rounded-lg px-3 py-1.5">📘 ${esc(weekly.most_studied.code)} (${weekly.most_studied.hours}h)</span>` : ''}
         <span class="bg-white/15 rounded-lg px-3 py-1.5">🎯 ${weekly.focus_minutes} focus min</span>
       </div>
-    </div>
+    </div>`}
 
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
       ${card('✅', p.totals.Completed, 'Completed', 'text-emerald-600')}
@@ -32,7 +40,7 @@ Views.progress = async (el) => {
       ${card('⏱️', `${p.weekly_hours}h`, 'This week', 'text-violet-600')}
     </div>
 
-    ${(risks.length || weekly.needs_attention.length) ? `
+    ${weekly && (risks.length || weekly.needs_attention.length) ? `
       <div class="grid lg:grid-cols-2 gap-4 mt-4">
         <section class="card p-5">
           <h3 class="font-bold text-slate-900 text-sm sm:text-base mb-3">⚠️ Risk by deadline</h3>

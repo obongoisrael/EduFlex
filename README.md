@@ -22,16 +22,22 @@ Demo account (seeded automatically on first run):
 
 ## Admin module
 
-To create the first admin account:
+To make an account an admin (e.g. the owner's):
 
-1. Register a regular student account through the app.
-2. Run the following SQL command against the SQLite database at [eduflex/data/eduflex.db](eduflex/data/eduflex.db):
+1. Register the account through the app as normal.
+2. Promote it from the project folder (works while the server is running):
 
-```sql
-UPDATE users SET role = 'admin' WHERE email = 'admin@eduflex.com';
+```bash
+npm run make-admin -- you@example.com
 ```
 
-Then sign in and visit the admin area at `/app.html#/admin/dashboard`.
+Then sign in and open **Admin** in the menu (or `/app.html#/admin`). From there you can
+manage users (activate/deactivate, promote/demote, delete), moderate resources
+(approve/reject/delete), and see courses, study sessions and reports.
+Admins cannot demote, deactivate or delete their own account.
+
+**Where the owner's data lives:** everything is in `data/eduflex.db` (one SQLite file)
+plus the PDFs in `uploads/`. Neither folder is in git — back them up separately.
 
 ## Features
 
@@ -52,14 +58,14 @@ Then sign in and visit the admin area at `/app.html#/admin/dashboard`.
 
 - **Backend:** Node.js + Express, session-based auth (bcrypt password hashing)
 - **Database:** SQLite via Node's built-in `node:sqlite` (zero native dependencies);
-  schema mirrors the PostgreSQL design in `PROMPT.md` and ports to Postgres/Supabase easily
+  schema is PostgreSQL-portable (see `EDUFLEX-MASTER-SPEC.md` §9) and ports to Postgres/Supabase easily
 - **Frontend:** Vanilla JS single-page app + Tailwind CSS
 - **Uploads:** multer → `/uploads`, served only through an authenticated download route
 
 ## Project structure
 
 ```
-eduflex/
+eduflex-v2/
 ├── server.js              # Express app entry point
 ├── src/
 │   ├── db.js              # Schema + DB helpers (node:sqlite)
@@ -95,15 +101,23 @@ eduflex/
 
 ## Tests
 
-Start the server, then:
-
 ```bash
-node tests/api.test.js
+npm test
 ```
+
+This runs every suite against a **throwaway database and uploads folder** in the
+system temp directory, on its own server and port. Your real data (`data/eduflex.db`,
+`uploads/`) and any EduFlex server you have running are never touched, AI is
+switched off so no paid Claude calls are made, and the temporary files are deleted
+afterwards. Running a test file directly is refused for the same reason.
 
 Covers registration/login, initials generation, all CRUD modules, schedule
 generation, calendar updates, focus completion, resource upload/search/upvote,
-the privacy rule, and cross-user ownership protection.
+the privacy rule, cross-user ownership protection, admin guards, EduFlex Plus
+limits, and AI roadmap generation (offline, with a simulated Claude response).
+
+To point the app itself at a different database or uploads folder, set
+`EDUFLEX_DB_PATH` and `EDUFLEX_UPLOAD_DIR`.
 
 ## Resetting the demo
 

@@ -1,6 +1,6 @@
 /** Calendar: month / week / day views with status colors, reminders and session actions. */
 Views.calendar = async (el) => {
-  const state = (Views.calendar._state ||= { mode: window.innerWidth < 640 ? 'week' : 'month', anchor: new Date() });
+  const state = (Views.calendar._state ||= { mode: window.innerWidth < 640 ? 'day' : 'month', anchor: new Date() });
 
   const CHIP = { Planned: 'bg-indigo-500', Completed: 'bg-emerald-500', Missed: 'bg-rose-500', Rescheduled: 'bg-violet-500' };
   const pad = (n) => String(n).padStart(2, '0');
@@ -19,13 +19,21 @@ Views.calendar = async (el) => {
       const end = new Date(start); end.setDate(start.getDate() + 6);
       return { from: start, to: end };
     }
-    return { from: new Date(a), to: new Date(a) };
+    // Day view loads its whole week so the week strip can show which days have plans
+    const start = new Date(a); start.setDate(a.getDate() - ((a.getDay() + 6) % 7));
+    const end = new Date(start); end.setDate(start.getDate() + 6);
+    return { from: start, to: end };
   }
 
   const { from, to } = rangeFor();
-  const { sessions } = await API.get(`/api/sessions?from=${key(from)}&to=${key(to)}`);
+  const [{ sessions }, { deadlines }] = await Promise.all([
+    API.get(`/api/sessions?from=${key(from)}&to=${key(to)}`),
+    API.get('/api/deadlines'),
+  ]);
   const byDay = {};
   for (const s of sessions) (byDay[s.start_datetime.slice(0, 10)] ||= []).push(s);
+  const dlByDay = {};
+  for (const dl of deadlines) if (dl.status === 'Pending') (dlByDay[dl.due_date.slice(0, 10)] ||= []).push(dl);
 
   const header = state.mode === 'month'
     ? state.anchor.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
@@ -49,6 +57,7 @@ Views.calendar = async (el) => {
 
       <div class="flex flex-wrap gap-3 text-[11px] text-slate-500 mb-4">
         ${Object.entries(CHIP).map(([s, c]) => `<span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full ${c}"></span>${s}</span>`).join('')}
+        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>Deadline</span>
       </div>
 
       <div id="calBody">${renderBody()}</div>
@@ -107,23 +116,72 @@ Views.calendar = async (el) => {
       return `<div class="grid grid-cols-1 sm:grid-cols-4 lg:grid-cols-7 gap-2">${cols.join('')}</div>`;
     }
 
-    const items = byDay[key(state.anchor)] || [];
-    return items.length === 0
-      ? '<p class="text-sm text-slate-400 text-center py-10">No sessions on this day.</p>'
-      : `<div class="space-y-2 max-w-xl">${items.map(s => `
-          <button data-session="${s.id}" class="w-full text-left card px-4 py-3.5 hover:border-indigo-300 flex items-center justify-between gap-3 active:scale-[.99] transition">
-            <div class="min-w-0">
-              <div class="font-medium text-sm text-slate-800 truncate">${s.reminder_enabled ? '🔔 ' : ''}${esc(s.title)}</div>
-              <div class="text-xs text-slate-400 mt-0.5">${s.start_datetime.slice(11)} – ${s.end_datetime.slice(11)} · ${esc(s.study_intensity)}</div>
-            </div>
-            ${badge(s.status, STATUS_BADGE[s.status])}
-          </button>`).join('')}</div>`;
+    // Day view: week strip + hourly timeline with sessions, deadlines and a "now" line
+    const dayKey = key(state.anchor);
+    const strip = [...Array(7)].map((_, i) => {
+      const dd = new Date(from); dd.setDate(from.getDate() + i);
+      const k = key(dd);
+      const has = (byDay[k] || []).length || (dlByDay[k] || []).length;
+      const sel = k === dayKey;
+      return `
+        <button data-day="${k}" class="flex flex-col items-center gap-0.5 py-2 rounded-2xl transition
+          ${sel ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/30' : k === todayKey ? 'text-indigo-600' : 'text-slate-700 hover:bg-slate-50'}">
+          <span class="text-[10px] font-semibold ${sel ? 'text-white/80' : 'text-slate-400'}">${'SMTWTFS'[dd.getDay()]}</span>
+          <span class="text-base font-bold">${dd.getDate()}</span>
+          <span class="w-1.5 h-1.5 rounded-full ${has ? (sel ? 'bg-white' : 'bg-indigo-400') : 'bg-transparent'}"></span>
+        </button>`;
+    }).join('');
+
+    const items = byDay[dayKey] || [];
+    const dls = dlByDay[dayKey] || [];
+    const mins = (s) => { const [h, m] = s.slice(11, 16).split(':').map(Number); return h * 60 + m; };
+    let startH = 7, endH = 22;
+    for (const s of items) { startH = Math.min(startH, Math.floor(mins(s.start_datetime) / 60)); endH = Math.max(endH, Math.ceil(mins(s.end_datetime) / 60)); }
+    for (const dl of dls) { startH = Math.min(startH, Math.floor(mins(dl.due_date) / 60)); endH = Math.max(endH, Math.ceil(mins(dl.due_date) / 60) + 1); }
+    endH = Math.min(24, endH);
+    const PX = 56;
+    const y = (m) => (m - startH * 60) * PX / 60;
+    const hourLabel = (h) => new Date(2000, 0, 1, h).toLocaleTimeString(undefined, { hour: 'numeric' });
+
+    const rows = [];
+    for (let h = startH; h < endH; h++) {
+      rows.push(`<div class="relative border-t border-slate-100" style="height:${PX}px">
+        <span class="absolute -top-2 left-0 w-12 text-[10px] text-slate-400 bg-white">${hourLabel(h)}</span></div>`);
+    }
+    const blocks = items.map(s => {
+      const t = y(mins(s.start_datetime)), b = y(mins(s.end_datetime));
+      return `<button data-session="${s.id}" class="absolute left-14 right-1 rounded-xl px-3 py-1.5 text-left text-white ${CHIP[s.status]} shadow-sm overflow-hidden active:opacity-90"
+        style="top:${t}px;height:${Math.max(28, b - t - 2)}px">
+        <div class="text-xs font-semibold truncate">${s.reminder_enabled ? '🔔 ' : ''}${esc(s.title)}</div>
+        <div class="text-[10px] opacity-80">${s.start_datetime.slice(11)} – ${s.end_datetime.slice(11)}</div>
+      </button>`;
+    }).join('');
+    const markers = dls.map(dl => `
+      <a href="#/deadlines" class="absolute left-14 right-1 rounded-lg px-3 py-1 bg-amber-50 text-amber-800 text-[11px] font-semibold border-l-4 border-amber-500 truncate"
+        style="top:${Math.max(0, y(mins(dl.due_date)) - 12)}px">⏰ ${esc(dl.type)} due: ${esc(dl.title)} · ${dl.due_date.slice(11)}</a>`).join('');
+    const nowM = new Date().getHours() * 60 + new Date().getMinutes();
+    const nowLine = dayKey === todayKey && nowM >= startH * 60 && nowM <= endH * 60 ? `
+      <div class="absolute left-12 right-0 h-0.5 bg-indigo-500 pointer-events-none" style="top:${y(nowM)}px">
+        <span class="absolute -left-1 -top-1 w-2.5 h-2.5 rounded-full bg-indigo-500"></span></div>` : '';
+    const empty = items.length || dls.length ? '' : `
+      <div class="absolute inset-x-0 top-24 text-center pointer-events-none">
+        <div class="w-12 h-12 mx-auto rounded-2xl bg-indigo-50 text-indigo-500 grid place-items-center [&_svg]:w-6 [&_svg]:h-6">${icon('calendar')}</div>
+        <div class="font-semibold text-slate-800 text-sm mt-3">Nothing scheduled</div>
+        <div class="text-xs text-slate-400 mt-0.5">Enjoy the free day.</div>
+      </div>`;
+
+    return `<div class="grid grid-cols-7 gap-1 mb-4">${strip}</div>
+      <div class="relative mt-3">${rows.join('')}${blocks}${markers}${nowLine}${empty}</div>`;
   }
 
   const step = { month: (d, n) => d.setMonth(d.getMonth() + n), week: (d, n) => d.setDate(d.getDate() + 7 * n), day: (d, n) => d.setDate(d.getDate() + n) };
   document.getElementById('prevBtn').onclick = () => { step[state.mode](state.anchor, -1); Views.calendar(el); };
   document.getElementById('nextBtn').onclick = () => { step[state.mode](state.anchor, +1); Views.calendar(el); };
   document.getElementById('todayBtn').onclick = () => { state.anchor = new Date(); Views.calendar(el); };
+  el.querySelectorAll('[data-day]').forEach(b => b.onclick = () => {
+    const [y, m, dd] = b.dataset.day.split('-').map(Number);
+    state.anchor = new Date(y, m - 1, dd); Views.calendar(el);
+  });
   el.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { state.mode = b.dataset.mode; Views.calendar(el); });
   el.querySelectorAll('[data-session]').forEach(b =>
     b.onclick = () => showSession(sessions.find(s => s.id === Number(b.dataset.session))));

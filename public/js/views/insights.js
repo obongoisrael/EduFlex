@@ -1,5 +1,10 @@
 /** Smart Insights: weekly summary, academic risk prediction, study recommendations. */
 Views.insights = async (el) => {
+  if (!App.isPlus()) {
+    el.innerHTML = `<div class="max-w-2xl mx-auto">${lockedCard('Smart Insights',
+      'See which deadlines you are at risk of missing and why, get smart picks for what to study next, and track your weekly trends.')}</div>`;
+    return;
+  }
   const [{ risks }, recs, weekly] = await Promise.all([
     API.get('/api/smart/risk'),
     API.get('/api/smart/recommendations'),

@@ -4,6 +4,10 @@
  *
  *   npm start   →  http://localhost:3000
  */
+// Load secrets (ANTHROPIC_API_KEY, SESSION_SECRET, …) from .env if present.
+// .env is git-ignored — see .env.example.
+try { process.loadEnvFile(); } catch { /* no .env file — env vars can still come from the shell */ }
+
 const express = require('express');
 const session = require('express-session');
 const path = require('path');
@@ -14,6 +18,18 @@ const { SQLiteStore } = require('./src/sessionStore');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const PRODUCTION = process.env.NODE_ENV === 'production';
+
+// A real session secret is mandatory once the app is public.
+if (PRODUCTION && (process.env.SESSION_SECRET || '').length < 32) {
+  console.error('SESSION_SECRET must be set to a long random value (32+ characters) in production.');
+  process.exit(1);
+}
+
+// Behind a hosting proxy (Render sets RENDER=true): trust its X-Forwarded-* headers so
+// each student's real IP is seen (rate limits) and https is detected (secure cookies).
+// Off by default — without a proxy those headers could be spoofed.
+if (process.env.RENDER || process.env.TRUST_PROXY === '1') app.set('trust proxy', 1);
 
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -40,6 +56,7 @@ app.use(session({
   cookie: {
     httpOnly: true,
     sameSite: 'lax',
+    secure: 'auto', // https-only cookie whenever the site is served over https
     maxAge: 7 * 24 * 60 * 60 * 1000,
   },
 }));
@@ -75,9 +92,10 @@ app.use((req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-seedIfEmpty();
+// Demo accounts/data on an empty database — local development only.
+// The live site starts empty (set EDUFLEX_SEED_DEMO=1 to seed it anyway).
+if (!PRODUCTION || process.env.EDUFLEX_SEED_DEMO === '1') seedIfEmpty();
 
 app.listen(PORT, () => {
-  console.log(`\nEduFlex is running →  http://localhost:${PORT}`);
-  console.log('Demo login: demo@eduflex.app / demo1234\n');
+  console.log(`\nEduFlex is running →  http://localhost:${PORT}\n`);
 });

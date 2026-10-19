@@ -5,6 +5,8 @@
 Views.resources = async (el) => {
   const state = (Views.resources._state ||= { search: '', category: '', institution: '', course: '', sort: 'recent', mine: false, topQuality: false });
   const CATEGORIES = ['Notes', 'Slides', 'PDF', 'Past Paper', 'Assignment Guide', 'Other'];
+  const plus = App.isPlus();
+  if (!plus) { state.topQuality = false; if (state.sort === 'quality') state.sort = 'recent'; } // quality filters are Plus
   const CAT_ICON = { Notes: '📝', Slides: '📊', PDF: '📄', 'Past Paper': '📜', 'Assignment Guide': '🧭', Other: '📁' };
 
   const params = new URLSearchParams();
@@ -41,7 +43,7 @@ Views.resources = async (el) => {
         <select id="f_sort" class="inp">
           <option value="recent" ${state.sort === 'recent' ? 'selected' : ''}>Most recent</option>
           <option value="top" ${state.sort === 'top' ? 'selected' : ''}>Most upvoted</option>
-          <option value="quality" ${state.sort === 'quality' ? 'selected' : ''}>Highest quality</option>
+          <option value="quality" ${state.sort === 'quality' ? 'selected' : ''}>Highest quality${plus ? '' : ' 👑'}</option>
         </select>
         <input id="f_course" class="inp" placeholder="Course name/code…" value="${esc(state.course)}">
       </div>
@@ -50,7 +52,7 @@ Views.resources = async (el) => {
           <input type="checkbox" id="f_mine" ${state.mine ? 'checked' : ''} class="w-4 h-4 rounded border-slate-300 text-indigo-600"> My uploads
         </label>
         <label class="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
-          <input type="checkbox" id="f_quality" ${state.topQuality ? 'checked' : ''} class="w-4 h-4 rounded border-slate-300 text-emerald-600"> ⭐ Highly recommended
+          <input type="checkbox" id="f_quality" ${state.topQuality ? 'checked' : ''} class="w-4 h-4 rounded border-slate-300 text-emerald-600"> ⭐ Highly recommended ${plus ? '' : proBadge()}
         </label>
         <button id="f_clear" class="text-xs font-semibold text-slate-400 hover:text-slate-600 ml-auto">Clear</button>
       </div>
@@ -112,9 +114,15 @@ Views.resources = async (el) => {
   document.getElementById('f_course').oninput = (e) => { clearTimeout(deb); deb = setTimeout(() => { state.course = e.target.value.trim(); refresh(); }, 400); };
   document.getElementById('f_category').onchange = (e) => { state.category = e.target.value; refresh(); };
   document.getElementById('f_institution').onchange = (e) => { state.institution = e.target.value; refresh(); };
-  document.getElementById('f_sort').onchange = (e) => { state.sort = e.target.value; refresh(); };
+  document.getElementById('f_sort').onchange = (e) => {
+    if (e.target.value === 'quality' && !plus) { e.target.value = state.sort; return showUpgrade('Ranking by quality is an EduFlex Plus feature.'); }
+    state.sort = e.target.value; refresh();
+  };
   document.getElementById('f_mine').onchange = (e) => { state.mine = e.target.checked; refresh(); };
-  document.getElementById('f_quality').onchange = (e) => { state.topQuality = e.target.checked; refresh(); };
+  document.getElementById('f_quality').onchange = (e) => {
+    if (!plus) { e.target.checked = false; return showUpgrade('The "Highly recommended" filter is an EduFlex Plus feature.'); }
+    state.topQuality = e.target.checked; refresh();
+  };
   document.getElementById('f_clear').onclick = () => { Object.assign(state, { search: '', category: '', institution: '', course: '', sort: 'recent', mine: false, topQuality: false }); refresh(); };
 
   el.querySelectorAll('[data-vote]').forEach(b => b.onclick = async () => {

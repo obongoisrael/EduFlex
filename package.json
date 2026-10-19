@@ -5,7 +5,10 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "seed": "node src/seed.js"
+    "seed": "node src/seed.js",
+    "make-admin": "node scripts/make-admin.js",
+    "test": "node tests/run.js",
+    "test-email": "node scripts/test-email.js"
   },
   "keywords": [
     "education",
@@ -15,9 +18,17 @@
   ],
   "license": "MIT",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
     "bcryptjs": "^2.4.3",
     "express": "^4.21.2",
     "express-session": "^1.18.1",
-    "multer": "^2.0.1"
+    "multer": "^2.0.1",
+    "nodemailer": "^10.0.11"
+  },
+  "engines": {
+    "node": ">=22.5.0"
   }
 }

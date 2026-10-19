@@ -4,7 +4,7 @@
  */
 const express = require('express');
 const { db, nowISO, fmtLocal } = require('../db');
-const { requireAuth, safe } = require('../middleware');
+const { requireAuth, requirePlus, isPlus, safe } = require('../middleware');
 const { assessRisks } = require('../services/risk');
 const { studyRecommendations, resourceRecommendations } = require('../services/recommend');
 const { weeklyInsights } = require('../services/insights');
@@ -14,21 +14,24 @@ const router = express.Router();
 router.use(requireAuth);
 
 // GET /api/smart/risk — full academic risk assessment
-router.get('/risk', safe((req, res) => {
+router.get('/risk', requirePlus, safe((req, res) => {
   res.json({ risks: assessRisks(req.session.userId) });
 }));
 
 // GET /api/smart/recommendations — study recommendations (also the "Generate" button target)
-router.get('/recommendations', safe((req, res) => {
+router.get('/recommendations', requirePlus, safe((req, res) => {
   res.json(studyRecommendations(req.session.userId, Number(req.query.limit) || 3));
 }));
 
 // POST /api/smart/recommendations/accept — add a suggested session to the schedule
-router.post('/recommendations/accept', safe((req, res) => {
+router.post('/recommendations/accept', requirePlus, safe((req, res) => {
   const { course_id, deadline_id, start_datetime, end_datetime, intensity, title } = req.body || {};
   const course = db.prepare('SELECT * FROM courses WHERE id = ? AND user_id = ?')
     .get(Number(course_id), req.session.userId);
   if (!course) return res.status(400).json({ error: 'Course not found.' });
+  if (deadline_id && !db.prepare('SELECT id FROM deadlines WHERE id = ? AND user_id = ?')
+    .get(Number(deadline_id), req.session.userId))
+    return res.status(400).json({ error: 'Deadline not found.' });
   if (!start_datetime || !end_datetime || end_datetime <= start_datetime)
     return res.status(400).json({ error: 'Invalid time range.' });
   if (new Date(start_datetime) < new Date())
@@ -54,7 +57,7 @@ router.get('/resources', safe((req, res) => {
 }));
 
 // GET /api/smart/weekly — weekly progress insights
-router.get('/weekly', safe((req, res) => {
+router.get('/weekly', requirePlus, safe((req, res) => {
   res.json(weeklyInsights(req.session.userId));
 }));
 
@@ -101,12 +104,12 @@ router.get('/reminders', safe((req, res) => {
 }));
 
 // GET /api/smart/recovery — recovery suggestions for missed sessions
-router.get('/recovery', safe((req, res) => {
+router.get('/recovery', requirePlus, safe((req, res) => {
   res.json({ suggestions: recoverySuggestions(req.session.userId) });
 }));
 
 // POST /api/smart/recovery/:sessionId/accept — accept a slot (suggested or custom)
-router.post('/recovery/:sessionId/accept', safe((req, res) => {
+router.post('/recovery/:sessionId/accept', requirePlus, safe((req, res) => {
   const { start_datetime, end_datetime } = req.body || {};
   const result = acceptRecovery(req.session.userId, Number(req.params.sessionId), start_datetime, end_datetime);
   if (result.error) return res.status(result.status).json({ error: result.error });
@@ -114,17 +117,37 @@ router.post('/recovery/:sessionId/accept', safe((req, res) => {
 }));
 
 // POST /api/smart/recovery/:sessionId/ignore — dismiss suggestion
-router.post('/recovery/:sessionId/ignore', safe((req, res) => {
+router.post('/recovery/:sessionId/ignore', requirePlus, safe((req, res) => {
   const ok = ignoreRecovery(req.session.userId, Number(req.params.sessionId));
   if (!ok) return res.status(404).json({ error: 'Missed session not found.' });
   res.json({ ok: true });
 }));
 
 // GET /api/smart/dashboard — everything the dashboard smart cards need in one call
+// Free users get a teaser: risk levels only (no explanations), streak + completion,
+// and resource suggestions. Plus unlocks recommendations, full insights and recovery.
 router.get('/dashboard', safe((req, res) => {
   const uid = req.session.userId;
   const risks = assessRisks(uid);
+  if (!isPlus(uid)) {
+    const weekly = weeklyInsights(uid);
+    return res.json({
+      is_plus: false,
+      risks: risks.filter(r => r.risk_level !== 'Low').slice(0, 3).map(r => ({
+        deadline_id: r.deadline_id, deadline_title: r.deadline_title, course_code: r.course_code,
+        due_date: r.due_date, days_left: r.days_left, risk_level: r.risk_level,
+      })),
+      recommendation: { recommendations: [], message: null, locked: true },
+      weekly: { streak: weekly.streak, completion_pct: weekly.completion_pct },
+      resource_recs: resourceRecommendations(uid, 3),
+      recovery: [],
+      recovery_count: db.prepare(
+        "SELECT COUNT(*) AS n FROM study_sessions WHERE user_id = ? AND status = 'Missed' AND recovery_status IS NULL"
+      ).get(uid).n,
+    });
+  }
   res.json({
+    is_plus: true,
     risks: risks.filter(r => r.risk_level !== 'Low').slice(0, 3),
     recommendation: studyRecommendations(uid, 1),
     weekly: weeklyInsights(uid),

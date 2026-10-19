@@ -7,9 +7,7 @@
 const bcrypt = require('bcryptjs');
 const path = require('path');
 const fs = require('fs');
-const { db, nowISO, fmtLocal, makePublicUsername } = require('./db');
-
-const UPLOAD_DIR = path.join(__dirname, '..', 'uploads');
+const { db, nowISO, fmtLocal, makePublicUsername, UPLOAD_DIR } = require('./db');
 
 /**
  * Build a minimal one-page PDF (no external libraries) so seeded resources
@@ -52,8 +50,8 @@ function seedIfEmpty() {
   const ts = nowISO();
 
   const insertUser = db.prepare(
-    `INSERT INTO users (first_name, last_name, public_username, email, password_hash, institution, programme, created_at, updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?)`
+    `INSERT INTO users (first_name, last_name, public_username, email, password_hash, institution, programme, created_at, updated_at, email_verified_at)
+     VALUES (?,?,?,?,?,?,?,?,?, datetime('now'))` // seeded demo accounts are pre-verified
   );
   const hash = bcrypt.hashSync('demo1234', 10);
 

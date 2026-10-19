@@ -4,9 +4,10 @@
  */
 const express = require('express');
 const { db, nowISO } = require('../db');
-const { requireAuth, safe } = require('../middleware');
+const { requireAuth, isPlus, safe } = require('../middleware');
 const { buildStructure } = require('../services/roadmapTemplates');
 const { recalcProgress, matchLibraryResources, scheduleRoadmap } = require('../services/roadmaps');
+const { aiConfigured, aiQuota, recordAiUse, aiRoadmapStructure, describeAiError } = require('../services/aiRoadmap');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -15,6 +16,7 @@ const LEVELS = ['Beginner', 'Intermediate', 'Advanced'];
 const STYLES = ['Theory-based', 'Practical', 'Project-based', 'Exam-focused', 'Mixed'];
 const RM_STATUS = ['Not Started', 'In Progress', 'Completed', 'Paused'];
 const ITEM_STATUS = ['Not Started', 'In Progress', 'Completed', 'Skipped'];
+const FREE_ROADMAPS = 1;
 
 function ownRoadmap(req) {
   return db.prepare('SELECT * FROM learning_roadmaps WHERE id = ? AND user_id = ?')
@@ -56,15 +58,45 @@ router.get('/', safe((req, res) => {
   res.json({ roadmaps });
 }));
 
-// POST /api/roadmaps/preview — generate a structure for editing (NOT saved)
-router.post('/preview', safe((req, res) => {
-  const b = req.body || {};
-  if (!b.course_name || !b.course_name.trim()) return res.status(400).json({ error: 'Course or unit name is required.' });
-  if (b.current_level && !LEVELS.includes(b.current_level)) return res.status(400).json({ error: 'Invalid level.' });
-  if (b.preferred_learning_style && !STYLES.includes(b.preferred_learning_style)) return res.status(400).json({ error: 'Invalid learning style.' });
-  const structure = buildStructure(b);
-  res.json({ structure });
+// GET /api/roadmaps/ai — is AI generation available, and how much is left this month?
+router.get('/ai', safe((req, res) => {
+  res.json({ configured: aiConfigured(), ...aiQuota(req.session.userId) });
 }));
+
+// POST /api/roadmaps/preview — generate a structure for editing (NOT saved).
+// Uses Claude when configured and within the monthly quota; otherwise (or on any
+// AI failure) falls back to the expert templates / custom generator.
+// Body may include ai: false to skip AI and use templates directly.
+router.post('/preview', async (req, res) => {
+  try {
+    const b = req.body || {};
+    if (!b.course_name || !b.course_name.trim()) return res.status(400).json({ error: 'Course or unit name is required.' });
+    if (b.current_level && !LEVELS.includes(b.current_level)) return res.status(400).json({ error: 'Invalid level.' });
+    if (b.preferred_learning_style && !STYLES.includes(b.preferred_learning_style)) return res.status(400).json({ error: 'Invalid learning style.' });
+
+    const uid = req.session.userId;
+    let structure = null;
+    let reason = null; // why AI was not used: off | not_configured | quota | error
+    if (b.ai === false) reason = 'off';
+    else if (!aiConfigured()) reason = 'not_configured';
+    else if (aiQuota(uid).remaining <= 0) reason = 'quota';
+    else {
+      try {
+        structure = await aiRoadmapStructure(b);
+        recordAiUse(uid);
+      } catch (err) {
+        console.error('AI roadmap generation failed:', describeAiError(err));
+        reason = 'error';
+      }
+    }
+    if (!structure) structure = buildStructure(b);
+    // ai.built: did Claude build this one? ai.used/limit/remaining: this month's quota
+    res.json({ structure, ai: { built: structure.source === 'ai', reason, ...aiQuota(uid) } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 // POST /api/roadmaps — save a (possibly edited) generated roadmap
 router.post('/', safe((req, res) => {
@@ -77,6 +109,12 @@ router.post('/', safe((req, res) => {
 
   const ts = nowISO();
   const uid = req.session.userId;
+
+  // Premium: free students get FREE_ROADMAPS roadmaps; Plus is unlimited
+  const owned = db.prepare('SELECT COUNT(*) AS n FROM learning_roadmaps WHERE user_id = ?').get(uid).n;
+  if (owned >= FREE_ROADMAPS && !isPlus(uid)) {
+    return res.status(402).json({ error: `Free plan includes ${FREE_ROADMAPS} roadmap. Upgrade to EduFlex Plus for unlimited roadmaps.`, premium: true });
+  }
 
   // Course integration: link an existing course, or auto-create one so
   // roadmap study sessions always belong to a course.

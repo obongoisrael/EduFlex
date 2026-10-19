@@ -3,108 +3,152 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#4f46e5" />
+  <meta name="theme-color" content="#faf7f1" />
   <title>EduFlex</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Brand palette: the app's "indigo" utilities render as EduFlex university navy everywhere.
+    tailwind.config = { theme: { extend: { colors: { indigo: {
+      50: '#f2f5fb', 100: '#e1e8f5', 200: '#c5d2ea', 300: '#9db2d9', 400: '#6f8bc2',
+      500: '#4c6aab', 600: '#3a5594', 700: '#2f4579', 800: '#283a63', 900: '#223051', 950: '#151e35',
+    } } } } };
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
     /* ---------- EduFlex design system (mobile-first) ---------- */
     :root {
       --safe-b: env(safe-area-inset-bottom, 0px);
+      --brand: #3a5594;      /* university navy */
+      --brand-2: #4c6aab;
+      --gold: #f6c453;      /* scholar gold */
+      --gold-2: #e9a526;
+      --ink: #1c2745;
+      --paper: #faf7f1;
     }
-    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
+    body { font-family: 'Poppins', system-ui, -apple-system, sans-serif; -webkit-tap-highlight-color: transparent;
+           background-color: var(--paper);
+           /* faint graph-paper dots — a quiet study-notebook texture */
+           background-image: radial-gradient(rgba(58,85,148,.09) 1px, transparent 1px); background-size: 22px 22px; }
 
     /* Buttons — consistent, generous tap targets (min 44px high) */
     .btn { display:inline-flex; align-items:center; justify-content:center; gap:.5rem;
-           font-weight:600; font-size:.875rem; border-radius:.875rem; padding:.75rem 1.15rem;
+           font-weight:600; font-size:.875rem; border-radius:1rem; padding:.75rem 1.15rem;
            min-height:2.75rem; transition:transform .12s ease, box-shadow .18s ease, background-color .18s ease;
            cursor:pointer; border:1px solid transparent; white-space:nowrap; }
     .btn:active { transform:scale(.97); }
     .btn:disabled { opacity:.5; cursor:not-allowed; transform:none; }
-    .btn-primary { background:linear-gradient(135deg,#4f46e5,#4338ca); color:#fff; box-shadow:0 4px 14px -4px rgba(79,70,229,.55); }
-    .btn-primary:hover:not(:disabled) { box-shadow:0 8px 22px -6px rgba(79,70,229,.7); }
+    .btn-primary { background:linear-gradient(135deg,#4c6aab,#2f4579); color:#fff; box-shadow:0 6px 16px -6px rgba(47,69,121,.55); }
+    .btn-primary:hover:not(:disabled) { box-shadow:0 10px 22px -8px rgba(47,69,121,.7); }
+    .btn-gold { background:linear-gradient(135deg,var(--gold),var(--gold-2)); color:var(--ink); box-shadow:0 6px 16px -6px rgba(233,165,38,.6); }
     .btn-success { background:linear-gradient(135deg,#059669,#047857); color:#fff; box-shadow:0 4px 14px -4px rgba(5,150,105,.5); }
     .btn-danger  { background:#e11d48; color:#fff; box-shadow:0 4px 14px -4px rgba(225,29,72,.45); }
     .btn-ghost   { background:#fff; color:#334155; border-color:#e2e8f0; }
     .btn-ghost:hover:not(:disabled) { background:#f8fafc; border-color:#cbd5e1; }
-    .btn-soft    { background:#eef2ff; color:#4338ca; }
-    .btn-soft:hover:not(:disabled) { background:#e0e7ff; }
-    .btn-sm { padding:.5rem .85rem; min-height:2.25rem; font-size:.8125rem; border-radius:.75rem; }
+    .btn-outline { background:#fff; color:var(--brand); border-color:var(--brand); }
+    .btn-soft    { background:#e9eef8; color:#2f4579; }
+    .btn-soft:hover:not(:disabled) { background:#e1e8f5; }
+    .btn-sm { padding:.5rem .85rem; min-height:2.25rem; font-size:.8125rem; border-radius:.8rem; }
     .btn-block { width:100%; }
 
     /* Cards & inputs */
-    .card { background:#fff; border:1px solid #e9edf5; border-radius:1.25rem; box-shadow:0 1px 2px rgba(15,23,42,.04); }
-    .inp { width:100%; border:1px solid #e2e8f0; border-radius:.875rem; padding:.75rem 1rem; font-size:.9375rem;
+    .card { background:#fff; border:1px solid #edf1f7; border-radius:1.4rem; box-shadow:0 1px 3px rgba(15,23,42,.04); }
+    .inp { width:100%; border:1px solid #e2e8f0; border-radius:.95rem; padding:.75rem 1rem; font-size:.9375rem;
            background:#fff; transition:border-color .15s, box-shadow .15s; min-height:2.875rem; }
-    .inp:focus { outline:none; border-color:#6366f1; box-shadow:0 0 0 3px rgba(99,102,241,.15); }
+    .inp:focus { outline:none; border-color:#6f8bc2; box-shadow:0 0 0 3px rgba(76,106,171,.18); }
+    .inp-soft { background:#f3f5f9; border-color:transparent; }
+    .inp-soft:focus { background:#fff; }
 
-    /* Navigation */
-    .nav-link { display:flex; align-items:center; gap:.75rem; padding:.7rem .8rem; border-radius:.75rem;
-                font-size:.9375rem; font-weight:500; color:#cbd5e1; transition:background-color .15s,color .15s; }
+    /* Form sheet bits (reference style: tiny caps labels, pill chips, steppers) */
+    .f-label { display:block; font-size:.6875rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:#64748b; margin-bottom:.45rem; }
+    .chip { display:inline-flex; align-items:center; gap:.35rem; padding:.55rem 1rem; border-radius:999px; font-size:.8125rem;
+            font-weight:500; background:#f3f5f9; color:#475569; border:1px solid transparent; transition:all .15s; cursor:pointer; white-space:nowrap; }
+    .chip.on { background:var(--brand); color:#fff; box-shadow:0 4px 12px -4px rgba(47,69,121,.55); }
+    .chip-outline.on { background:#e9eef8; color:#2f4579; border-color:#9db2d9; box-shadow:none; }
+    .seg { display:grid; grid-template-columns:repeat(5,auto); gap:.1rem; background:#f1f4f8; border-radius:999px; padding:.3rem; }
+    .seg::-webkit-scrollbar { display:none; }
+    .seg button { padding:.5rem .3rem; border-radius:999px; font-size:.72rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:500; color:#64748b; white-space:nowrap; }
+    .seg button.on { background:#fff; color:#0f172a; font-weight:600; box-shadow:0 1px 4px rgba(15,23,42,.1); }
+    .stepper { display:flex; align-items:center; justify-content:space-between; background:#f3f5f9; border-radius:1rem; padding:.35rem; }
+    .stepper button { width:2.5rem; height:2.5rem; border-radius:999px; display:grid; place-items:center; font-size:1.25rem; font-weight:600; }
+    .stepper .minus { background:#0f172a; color:#fff; }
+    .stepper .plus { background:#fff; color:#0f172a; box-shadow:0 1px 3px rgba(15,23,42,.12); }
+    .box { background:#fff; border:1px solid #edf1f7; border-radius:1.25rem; padding:1rem; }
+
+    /* Premium */
+    .pro-badge { display:inline-flex; align-items:center; font-size:.625rem; font-weight:700; letter-spacing:.04em;
+                 padding:.15rem .45rem; border-radius:.4rem; background:#fef3c7; color:#b45309; line-height:1.2; }
+    .free-badge { display:inline-flex; font-size:.625rem; font-weight:700; padding:.15rem .45rem; border-radius:.4rem; background:#dcfce7; color:#15803d; }
+    .premium-banner { display:flex; align-items:center; gap:.85rem; padding:1rem 1.1rem; border-radius:1.4rem; color:#fff;
+                      background:linear-gradient(120deg,#223051 0%,#3a5594 100%); box-shadow:0 12px 28px -14px rgba(34,48,81,.8);
+                      transition:transform .12s ease; }
+    .premium-banner:active { transform:scale(.99); }
+    .premium-banner svg, .tint-ic svg { width:1.3rem; height:1.3rem; }
+    .tint-ic { display:grid; place-items:center; border-radius:.85rem; flex-shrink:0; }
+
+    /* Rows on the features page */
+    .row-link { display:flex; align-items:center; gap:.85rem; padding:.85rem 1rem; transition:background-color .15s; }
+    .row-link:hover { background:#f8fafc; }
+    .row-link + .row-link { border-top:1px solid #f1f5f9; }
+    .row-link .chev svg { width:1.1rem; height:1.1rem; }
+
+    /* Desktop sidebar */
+    .nav-link { display:flex; align-items:center; gap:.75rem; padding:.6rem .7rem; border-radius:.9rem;
+                font-size:.875rem; font-weight:500; color:#cbd5e1; transition:background-color .15s,color .15s; }
     .nav-link:hover { background:rgba(255,255,255,.07); color:#fff; }
-    .nav-link.active { background:linear-gradient(135deg,#4f46e5,#4338ca); color:#fff; box-shadow:0 4px 12px -4px rgba(79,70,229,.6); }
-    .tab { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.15rem;
-           flex:1; padding:.45rem 0; font-size:.625rem; font-weight:600; color:#94a3b8; min-height:3.25rem; }
-    .tab.active { color:#4f46e5; }
-    .tab .ic { font-size:1.25rem; line-height:1; }
+    .nav-link.active { background:linear-gradient(135deg,var(--gold),var(--gold-2)); color:var(--ink); font-weight:600; box-shadow:0 4px 12px -4px rgba(233,165,38,.55); }
+    .nav-ic { width:2rem; height:2rem; border-radius:.7rem; display:grid; place-items:center; flex-shrink:0;
+              background:rgba(246,196,83,.1); color:#f6c453; transition:background-color .15s,color .15s; }
+    .nav-ic svg { width:1.1rem; height:1.1rem; }
+    .nav-link.active .nav-ic { background:rgba(28,39,69,.12); color:var(--ink); }
+    .nav-logout .nav-ic { background:rgba(251,113,133,.12); color:#fda4af; }
 
-    /* Sidebar drawer — own CSS (not Tailwind transform utilities) so the state
-       is deterministic: hidden off-canvas on mobile, always docked on desktop. */
-    #sidebar { transform: translateX(-100%); transition: transform .3s ease-out; }
-    #sidebar.open { transform: translateX(0); }
-    @media (min-width: 1024px) {
-      #sidebar { transform: none !important; }
-      #backdrop { display: none !important; }
-    }
+    /* Floating bottom bar (phones) */
+    #tabbar { bottom:calc(.75rem + var(--safe-b)); }
+    .tab { width:3rem; height:3rem; border-radius:999px; display:grid; place-items:center; color:#94a3b8; transition:all .15s; }
+    .tab svg { width:1.4rem; height:1.4rem; }
+    .tab.active { background:#e9eef8; color:var(--brand); }
+    .fab { width:3.6rem; height:3.6rem; border-radius:999px; display:grid; place-items:center; color:var(--ink);
+           background:linear-gradient(135deg,var(--gold),var(--gold-2)); box-shadow:0 10px 22px -6px rgba(233,165,38,.65), 0 0 0 5px #fff;
+           transition:transform .12s ease; }
+    .fab:active { transform:scale(.93); }
+    .fab svg { width:1.7rem; height:1.7rem; stroke-width:2.5; }
+
+    @media (max-width: 1023px) { .mobile-hide { display:none !important; } }
 
     .view-enter { animation: fade .2s ease; }
     @keyframes fade { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+    .sheet-enter { animation: rise .25s ease-out; }
+    @keyframes rise { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:none; } }
     .line-clamp-2 { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
     ::-webkit-scrollbar { width:8px; height:8px; }
     ::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:99px; }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800">
+<body class="text-slate-800">
 
 <div class="min-h-screen flex">
 
-  <!-- Drawer backdrop (mobile) -->
-  <div id="backdrop" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 hidden lg:hidden" onclick="toggleSidebar(false)"></div>
-
-  <!-- Sidebar / mobile drawer -->
+  <!-- Desktop sidebar (phones use the floating bottom bar + the features page) -->
   <aside id="sidebar"
-    class="fixed z-50 inset-y-0 left-0 w-[17rem] bg-gradient-to-b from-slate-900 to-slate-950 flex flex-col">
+    class="hidden lg:flex fixed z-50 inset-y-0 left-0 w-[17rem] bg-gradient-to-b from-[#1f2b4d] to-[#141c33] flex-col">
     <div class="h-16 flex items-center gap-3 px-5 border-b border-white/10 shrink-0">
-      <span class="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white grid place-items-center font-extrabold text-lg shadow-lg shadow-indigo-900/40">E</span>
+      <span class="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#f6c453] to-[#e9a526] text-[#1c2745] grid place-items-center shadow-lg shadow-black/30 [&_svg]:w-6 [&_svg]:h-6" data-icon="cap"></span>
       <div class="min-w-0">
         <div class="font-bold text-white leading-tight">EduFlex</div>
         <div class="text-[10px] text-slate-400 leading-tight truncate">Adaptive Learning System</div>
       </div>
-      <button class="ml-auto lg:hidden text-slate-400 hover:text-white p-2 -mr-2" onclick="toggleSidebar(false)" aria-label="Close menu">✕</button>
     </div>
 
-    <nav id="nav" class="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-      <a href="#/dashboard"    data-route="dashboard"    class="nav-link"><span>🏠</span> Dashboard</a>
-      <a href="#/roadmaps"     data-route="roadmaps"     class="nav-link"><span>🗺️</span> Roadmaps</a>
-      <a href="#/courses"      data-route="courses"      class="nav-link"><span>📘</span> Courses</a>
-      <a href="#/deadlines"    data-route="deadlines"    class="nav-link"><span>⏰</span> Deadlines</a>
-      <a href="#/availability" data-route="availability" class="nav-link"><span>🕒</span> Availability</a>
-      <a href="#/schedule"     data-route="schedule"     class="nav-link"><span>🗓️</span> Schedule</a>
-      <a href="#/calendar"     data-route="calendar"     class="nav-link"><span>📅</span> Calendar</a>
-      <a href="#/insights"     data-route="insights"     class="nav-link"><span>💡</span> Smart Insights</a>
-      <a href="#/focus"        data-route="focus"        class="nav-link"><span>🎯</span> Focus Mode</a>
-      <a href="#/resources"    data-route="resources"    class="nav-link"><span>📚</span> Resources</a>
-      <a href="#/peers"        data-route="peers"        class="nav-link"><span>🤝</span> Peer Study</a>
-      <a href="#/progress"     data-route="progress"     class="nav-link"><span>📈</span> Progress</a>
-      <a href="#/profile"      data-route="profile"      class="nav-link"><span>👤</span> Profile</a>
-      <div id="adminNavWrap" class="hidden pt-2 mt-2 border-t border-white/10">
-        <a href="#/admin" data-route="admin" class="nav-link"><span>🛡️</span> Admin</a>
-      </div>
-    </nav>
+    <div class="px-3 pt-4">
+      <button onclick="openCreate()" class="btn btn-gold btn-block"><span class="w-5 h-5" data-icon="plus"></span> New</button>
+    </div>
+
+    <!-- Filled from NAV_SECTIONS in app.js -->
+    <nav id="nav" aria-label="Main" class="flex-1 overflow-y-auto px-3 py-3 space-y-0.5"></nav>
 
     <div class="p-3 border-t border-white/10 shrink-0">
-      <button onclick="App.logout()" class="nav-link w-full text-rose-300 hover:text-rose-200"><span>🚪</span> Logout</button>
+      <button onclick="App.logout()" class="nav-link nav-logout w-full text-rose-300 hover:text-rose-200"><span class="nav-ic" data-icon="logout"></span> Logout</button>
     </div>
   </aside>
 
@@ -115,22 +159,22 @@
       📡 You're offline — your saved study plan is still available. Changes sync when you reconnect.
     </div>
 
-    <header class="h-16 sticky top-0 z-30 bg-white/85 backdrop-blur-lg border-b border-slate-200/70 flex items-center justify-between px-3 sm:px-6 gap-2">
-      <div class="flex items-center gap-2 min-w-0">
-        <button class="lg:hidden p-2.5 -ml-1 rounded-xl hover:bg-slate-100 active:scale-95 transition" onclick="toggleSidebar()" aria-label="Menu">
-          <svg class="w-6 h-6 text-slate-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+    <header id="topbar" class="h-16 sticky top-0 z-30 bg-[#faf7f1]/85 backdrop-blur-lg border-b border-slate-200/60 flex items-center justify-between px-4 sm:px-6 gap-2">
+      <div class="flex items-center gap-1 min-w-0">
+        <button class="lg:hidden w-10 h-10 -ml-2 grid place-items-center rounded-full text-slate-600 hover:bg-slate-100" onclick="history.length > 1 ? history.back() : (location.hash = '#/more')" aria-label="Back">
+          <span class="w-5 h-5" data-icon="back"></span>
         </button>
-        <h1 id="pageTitle" class="font-bold text-base sm:text-lg text-slate-900 truncate">Dashboard</h1>
+        <h1 id="pageTitle" class="font-bold text-base sm:text-lg text-slate-900 truncate">Home</h1>
       </div>
       <div class="flex items-center gap-2 sm:gap-3 shrink-0">
         <span id="topInstitution" class="hidden md:block text-xs text-slate-400 max-w-[14rem] truncate"></span>
         <a href="#/profile" id="topAvatar"
-           class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white grid place-items-center font-bold text-sm shadow-md shadow-indigo-500/30 active:scale-95 transition"
+           class="w-10 h-10 rounded-full bg-gradient-to-br from-[#4c6aab] to-[#223051] text-white grid place-items-center font-bold text-sm shadow-md shadow-indigo-900/25 active:scale-95 transition"
            title="Profile">…</a>
       </div>
     </header>
 
-    <main id="view" class="flex-1 px-3 py-4 sm:px-6 sm:py-6 max-w-6xl w-full mx-auto pb-24 lg:pb-6">
+    <main id="view" class="flex-1 px-4 py-4 sm:px-6 sm:py-6 max-w-6xl w-full mx-auto pb-32 lg:pb-6">
       <div class="text-slate-400 text-sm py-20 text-center">Loading EduFlex…</div>
     </main>
 
@@ -140,21 +184,24 @@
   </div>
 </div>
 
-<!-- Mobile bottom tab bar -->
-<nav id="tabbar" class="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-lg border-t border-slate-200 flex"
-     style="padding-bottom:var(--safe-b)">
-  <a href="#/dashboard" data-tab="dashboard" class="tab"><span class="ic">🏠</span>Home</a>
-  <a href="#/roadmaps"  data-tab="roadmaps"  class="tab"><span class="ic">🗺️</span>Roadmaps</a>
-  <a href="#/focus"     data-tab="focus"     class="tab"><span class="ic">🎯</span>Focus</a>
-  <a href="#/calendar"  data-tab="calendar"  class="tab"><span class="ic">📅</span>Calendar</a>
-  <button onclick="toggleSidebar(true)" class="tab"><span class="ic">☰</span>More</button>
+<!-- Floating bottom bar (phones): Home · Calendar · + · Features · Smart Insights -->
+<nav id="tabbar" aria-label="Quick navigation" class="lg:hidden fixed inset-x-4 z-40 max-w-md mx-auto h-[4.25rem] px-3 rounded-full bg-white/95 backdrop-blur-lg border border-slate-200/80 shadow-[0_12px_32px_-12px_rgba(15,23,42,.35)] flex items-center justify-between">
+  <a href="#/dashboard" data-tab="dashboard" class="tab" aria-label="Home"><span data-icon="dashboard"></span></a>
+  <a href="#/calendar"  data-tab="calendar"  class="tab" aria-label="Calendar"><span data-icon="calendar"></span></a>
+  <button onclick="openCreate()" class="fab" aria-label="Add new"><span data-icon="plus"></span></button>
+  <a href="#/more"      data-tab="more"      class="tab" aria-label="All features"><span data-icon="menu"></span></a>
+  <a href="#/insights"  data-tab="insights"  class="tab" aria-label="Smart Insights"><span data-icon="sparkle"></span></a>
 </nav>
 
+<div id="createRoot"></div>
 <div id="modalRoot"></div>
-<div id="toastRoot" class="fixed bottom-20 lg:bottom-4 right-3 left-3 sm:left-auto sm:right-4 z-[60] space-y-2 pointer-events-none"></div>
+<div id="toastRoot" class="fixed bottom-24 lg:bottom-4 right-3 left-3 sm:left-auto sm:right-4 z-[80] space-y-2 pointer-events-none"></div>
 
 <script src="/js/api.js"></script>
 <script src="/js/app.js"></script>
+<script src="/js/views/create.js"></script>
+<script src="/js/views/more.js"></script>
+<script src="/js/views/premium.js"></script>
 <script src="/js/views/dashboard.js"></script>
 <script src="/js/views/courses.js"></script>
 <script src="/js/views/deadlines.js"></script>

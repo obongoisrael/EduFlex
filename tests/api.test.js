@@ -1,13 +1,19 @@
 /**
  * EduFlex API test suite (PROMPT.md §18).
- * Run the server first (npm start), then:  node tests/api.test.js
+ * Run with:  npm test   (tests/run.js starts a server on a throwaway database)
  *
  * Covers: registration/login, public-username generation, course/deadline/
  * availability creation, schedule generation, calendar session updates,
  * focus completion, resource upload/search/upvote, and the privacy rule.
  */
+// Safety: never run against real data. `npm test` (tests/run.js) sets up a throwaway database.
+if (!process.env.EDUFLEX_TEST_RUN) {
+  console.error('Refusing to run: these tests write to the database. Use "npm test", which uses a throwaway copy.');
+  process.exit(1);
+}
+const fs = require('fs');
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
-const { db } = require('../src/db');
+const { db, UPLOAD_DIR } = require('../src/db');
 
 let cookie = '';
 let passed = 0, failed = 0;
@@ -26,6 +32,43 @@ async function api(method, path, body, isForm = false) {
   return { status: res.status, data };
 }
 
+/** Latest email sent to `to` (the test runner writes all mail to EDUFLEX_MAIL_OUTBOX). */
+function lastEmail(to) {
+  const file = process.env.EDUFLEX_MAIL_OUTBOX;
+  if (!file || !fs.existsSync(file)) return null;
+  const mails = fs.readFileSync(file, 'utf8').trim().split('\n').filter(Boolean).map(l => JSON.parse(l));
+  return mails.filter(m => m.to === to).pop() || null;
+}
+const linkIn = (mail, re) => (mail && mail.text.match(re) || [])[0] || null;
+
+/** Open the confirmation link from the latest email to `to` (logs that user in). */
+async function confirmEmail(to) {
+  const link = linkIn(lastEmail(to), /http\S+\/api\/auth\/verify\?token=\S+/);
+  if (!link) return { status: 0, location: null };
+  const res = await fetch(link, { redirect: 'manual', headers: { Cookie: cookie } });
+  const setCookie = res.headers.get('set-cookie');
+  if (setCookie) cookie = setCookie.split(';')[0];
+  return { status: res.status, location: res.headers.get('location'), link };
+}
+
+/** GET without following redirects; keeps the session cookie. Returns { status, location }. */
+async function hop(url) {
+  const res = await fetch(url.startsWith('http') ? url : BASE + url, { redirect: 'manual', headers: { Cookie: cookie } });
+  const setCookie = res.headers.get('set-cookie');
+  if (setCookie) cookie = setCookie.split(';')[0];
+  return { status: res.status, location: res.headers.get('location') || '' };
+}
+
+/** Start "Continue with Google": returns the state + nonce Google would receive. */
+async function startGoogle() {
+  const r = await hop('/api/auth/google');
+  const url = new URL(r.location);
+  return { r, url, state: url.searchParams.get('state'), nonce: url.searchParams.get('nonce') };
+}
+/** Simulate Google sending the student back with an ID token carrying `claims`. */
+const googleCallback = (state, claims) =>
+  hop(`/api/auth/google/callback?state=${encodeURIComponent(state)}&code=${Buffer.from(JSON.stringify(claims)).toString('base64url')}`);
+
 function check(name, cond, detail = '') {
   if (cond) { passed++; console.log(`  PASS  ${name}`); }
   else { failed++; console.log(`  FAIL  ${name} ${detail}`); }
@@ -34,15 +77,40 @@ function check(name, cond, detail = '') {
 (async () => {
   console.log(`\nEduFlex API tests against ${BASE}\n`);
   const stamp = Date.now();
-  const email = `test${stamp}@example.com`;
+  const email = `test${stamp}@students.eduflex-test.ac.ke`;
 
   // 1. Registration + public username generation
   let r = await api('POST', '/api/auth/register', {
     first_name: 'John', last_name: 'Doe', email, password: 'secret123',
     institution: 'Test University', programme: 'BSc Testing',
   });
-  check('registration succeeds', r.status === 201, `(got ${r.status})`);
-  check('public username generated from initials (JD)', r.data?.user?.public_username === 'JD');
+  check('registration succeeds and sends a confirmation email', r.status === 201 && r.data.verification_sent === true
+    && !!lastEmail(email), `(got ${r.status})`);
+  r = await api('POST', '/api/auth/login', { email, password: 'secret123' });
+  check('unconfirmed accounts cannot log in', r.status === 403 && r.data.needs_verification === true);
+  const confirm = await confirmEmail(email);
+  check('confirmation link verifies and logs in (redirects to setup)', confirm.status === 302 && /#\/setup$/.test(confirm.location || ''));
+  r = await api('GET', '/api/auth/me');
+  check('public username generated from initials (JD)', r.data?.user?.public_username === 'JD' && r.data.user.email_verified === true);
+  const reused = await fetch(confirm.link, { redirect: 'manual' });
+  check('confirmation link works only once', /verify=invalid/.test(reused.headers.get('location') || ''));
+
+  // Real-account rules
+  const reg = (body) => api('POST', '/api/auth/register', {
+    first_name: 'Rule', last_name: 'Check', institution: 'Test University', programme: 'BSc Testing', ...body,
+  });
+  r = await reg({ email: `rule${stamp}@gmail.com`, password: 'secret123' });
+  check('any email domain accepted (e.g. Gmail)', r.status === 201 && r.data.verification_sent === true);
+  r = await reg({ email: `rule${stamp}@strathmore.edu`, password: 'short1' });
+  check('short password rejected', r.status === 400 && /8 characters/.test(r.data.error));
+  r = await reg({ email: `rule${stamp}@strathmore.edu`, password: 'onlyletters' });
+  check('password without numbers rejected', r.status === 400 && /letters and numbers/.test(r.data.error));
+  r = await reg({ email: `rule${stamp}@strathmore.edu`, password: 'password123' });
+  check('common password rejected', r.status === 400 && /too common/.test(r.data.error));
+  r = await api('POST', '/api/auth/register', {
+    first_name: 'John', last_name: 'Doe', email, password: 'secret123', institution: 'Test University', programme: 'BSc Testing',
+  });
+  check('duplicate confirmed email rejected', r.status === 409);
 
   // Invalid registration is rejected
   r = await api('POST', '/api/auth/register', { first_name: '', email: 'bad', password: '1' });
@@ -54,12 +122,13 @@ function check(name, cond, detail = '') {
   check('admin stats endpoint accessible for admins', r.status === 200 && !!r.data?.stats);
 
   await api('POST', '/api/auth/logout');
-  const studentEmail = `student${stamp}@example.com`;
+  const studentEmail = `student${stamp}@students.eduflex-test.ac.ke`;
   r = await api('POST', '/api/auth/register', {
     first_name: 'Student', last_name: 'User', email: studentEmail, password: 'secret123',
     institution: 'Demo University', programme: 'BSc Demo',
   });
   check('student registration succeeds', r.status === 201);
+  await confirmEmail(studentEmail);
   r = await api('GET', '/api/admin/stats');
   check('students are blocked from admin stats', r.status === 403);
   await api('POST', '/api/auth/logout');
@@ -86,6 +155,7 @@ function check(name, cond, detail = '') {
     due_date: dueStr, priority: 'High', estimated_hours: 3,
   });
   check('deadline created', r.status === 201);
+  const deadlineId = r.data.deadline.id;
 
   // 5. Availability slot creation
   const tomorrow = new Date(Date.now() + 86400000);
@@ -171,10 +241,11 @@ function check(name, cond, detail = '') {
   // 13. Ownership: another user cannot edit our course
   await api('POST', '/api/auth/logout');
   r = await api('POST', '/api/auth/register', {
-    first_name: 'Eve', last_name: 'Intruder', email: `eve${stamp}@example.com`,
+    first_name: 'Eve', last_name: 'Intruder', email: `eve${stamp}@students.eduflex-test.ac.ke`,
     password: 'secret123', institution: 'Other Uni', programme: 'X',
   });
-  const eveId = r.data.user.id; // used later to target THIS run's Eve in peer matching
+  await confirmEmail(`eve${stamp}@students.eduflex-test.ac.ke`);
+  const eveId = (await api('GET', '/api/auth/me')).data.user.id; // used later to target THIS run's Eve in peer matching
   r = await api('PUT', `/api/courses/${courseId}`, { title: 'Hacked' });
   check('other users cannot edit your course', r.status === 404);
   r = await api('DELETE', `/api/resources/${resourceId}`);
@@ -257,14 +328,14 @@ function check(name, cond, detail = '') {
   const match = (r.data.matches || []).find(m => m.user_id === eveId);
   check('peer match found by shared course (EI)', !!match && match.public_username === 'EI');
   check('peer matching privacy: no full names or emails in payload',
-    !JSON.stringify(r.data).includes('Intruder') && !JSON.stringify(r.data).includes('@example.com'));
+    !JSON.stringify(r.data).includes('Intruder') && !JSON.stringify(r.data).includes('@students.eduflex-test.ac.ke'));
 
   // 23. Study requests (sender → receiver, initials only)
   r = await api('POST', '/api/peers/requests', {
     receiver_user_id: match.user_id, course_name: 'Testing 101', message: 'Revise together before the CAT?',
   });
   check('study request sent', r.status === 201);
-  await api('POST', '/api/auth/login', { email: `eve${stamp}@example.com`, password: 'secret123' });
+  await api('POST', '/api/auth/login', { email: `eve${stamp}@students.eduflex-test.ac.ke`, password: 'secret123' });
   r = await api('GET', '/api/peers/requests');
   const incoming = (r.data.incoming || []).find(x => x.status === 'Pending');
   check('request visible to receiver, sender shown as initials (JD)', !!incoming && incoming.public_username === 'JD');
@@ -299,14 +370,19 @@ function check(name, cond, detail = '') {
   // 26. Template-based generation (Database Systems matches a predefined template)
   r = await api('POST', '/api/roadmaps/preview', {
     course_name: 'Database Systems', course_code: 'TST 224', current_level: 'Beginner',
-    preferred_learning_style: 'Mixed', duration_days: 14,
+    preferred_learning_style: 'Mixed', duration_days: 14, ai: false, // tests never call the paid AI
   });
   check('roadmap preview generated from template', r.status === 200 && r.data.structure.source === 'template'
     && r.data.structure.stages.length >= 3);
+  check('preview reports AI status (skipped on request)', r.data.ai && r.data.ai.built === false && r.data.ai.reason === 'off'
+    && typeof r.data.ai.remaining === 'number');
+  const aiStatus = await api('GET', '/api/roadmaps/ai');
+  check('AI status endpoint returns quota', aiStatus.status === 200 && typeof aiStatus.data.configured === 'boolean'
+    && aiStatus.data.limit > 0 && aiStatus.data.used >= 0);
 
   // 27. Custom fallback for unknown subjects
   const custom = await api('POST', '/api/roadmaps/preview', {
-    course_name: 'Marine Biology', current_level: 'Beginner', preferred_learning_style: 'Exam-focused', duration_days: 10,
+    course_name: 'Marine Biology', current_level: 'Beginner', preferred_learning_style: 'Exam-focused', duration_days: 10, ai: false,
   });
   check('custom roadmap generated for unknown subject', custom.data.structure.source === 'custom'
     && custom.data.structure.stages.length >= 2);
@@ -359,12 +435,215 @@ function check(name, cond, detail = '') {
   } else check('roadmap task completed', false, '(no tasks found)');
 
   // 33. Ownership: Eve cannot access John's roadmap
-  await api('POST', '/api/auth/login', { email: `eve${stamp}@example.com`, password: 'secret123' });
+  await api('POST', '/api/auth/login', { email: `eve${stamp}@students.eduflex-test.ac.ke`, password: 'secret123' });
   r = await api('GET', `/api/roadmaps/${roadmapId}`);
   check('other users cannot view your roadmap', r.status === 404);
   r = await api('DELETE', `/api/roadmaps/${roadmapId}`);
   check('other users cannot delete your roadmap', r.status === 404);
   await api('POST', '/api/auth/login', { email, password: 'secret123' });
+
+  /* ===================== Hardening: cross-user IDs, admin guards, moderation ===================== */
+
+  // 34. Rescheduling into the past is rejected
+  const pastStart = new Date(Date.now() - 86400000).toISOString().slice(0, 16);
+  const pastEnd = new Date(Date.now() - 86400000 + 3600000).toISOString().slice(0, 16);
+  r = await api('PATCH', `/api/sessions/${session.id}`, { start_datetime: pastStart, end_datetime: pastEnd });
+  check('rescheduling into the past rejected', r.status === 400);
+
+  // 35. Eve cannot attach John's course / session / deadline to her own records
+  await api('POST', '/api/auth/login', { email: `eve${stamp}@students.eduflex-test.ac.ke`, password: 'secret123' });
+  const eveCourse = (await api('GET', '/api/courses')).data.courses[0];
+  r = await api('POST', '/api/deadlines', {
+    course_id: eveCourse.id, title: 'Eve deadline', type: 'Assignment',
+    due_date: dueStr, priority: 'Low', estimated_hours: 2,
+  });
+  r = await api('PUT', `/api/deadlines/${r.data.deadline.id}`, { course_id: courseId });
+  check('cannot move a deadline onto another user\'s course', r.status === 400);
+  r = await api('POST', '/api/focus', { title: 'x', study_session_id: session.id });
+  check('cannot link focus to another user\'s study session', r.status === 400);
+  // (Eve needs Plus to reach the recommendations endpoint, so the ownership check is what's tested)
+  db.prepare(`UPDATE users SET plan = 'plus' WHERE id = ?`).run(eveId);
+  const soonStart = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 16);
+  const soonEnd = new Date(Date.now() + 3 * 86400000 + 3600000).toISOString().slice(0, 16);
+  r = await api('POST', '/api/smart/recommendations/accept', {
+    course_id: eveCourse.id, deadline_id: deadlineId, start_datetime: soonStart, end_datetime: soonEnd,
+  });
+  check('cannot accept a recommendation for another user\'s deadline', r.status === 400);
+
+  // 36. Admin (John) cannot demote/deactivate himself; invalid values rejected
+  await api('POST', '/api/auth/login', { email, password: 'secret123' });
+  const johnId = (await api('GET', '/api/auth/me')).data.user.id;
+  r = await api('PATCH', `/api/admin/users/${johnId}/role`, { role: 'student' });
+  check('admin cannot demote themselves', r.status === 400);
+  r = await api('PATCH', `/api/admin/users/${johnId}/status`, { status: 'inactive' });
+  check('admin cannot deactivate themselves', r.status === 400);
+  r = await api('PATCH', `/api/admin/users/${eveId}/status`, { status: 'bogus' });
+  check('invalid account status rejected', r.status === 400);
+
+  // 37. Rejected resources are hidden from other students (owner still sees them)
+  r = await api('PATCH', `/api/admin/resources/${resourceId}/reject`, {});
+  check('admin can reject a resource', r.status === 200);
+  r = await api('GET', `/api/resources/${resourceId}/view`);
+  check('owner can still view their rejected resource', r.status === 200);
+  await api('POST', '/api/auth/login', { email: `eve${stamp}@students.eduflex-test.ac.ke`, password: 'secret123' });
+  r = await api('GET', `/api/resources/${resourceId}/view`);
+  check('rejected resource cannot be viewed by others', r.status === 404);
+  r = await api('GET', `/api/resources/${resourceId}/download`);
+  check('rejected resource cannot be downloaded by others', r.status === 404);
+  r = await api('GET', '/api/stats/dashboard');
+  check('rejected resource hidden from dashboard feed', !r.data.recent_resources.some(x => x.id === resourceId));
+
+  // 38. Admin deleting a resource also removes its file from disk
+  await api('POST', '/api/auth/login', { email, password: 'secret123' });
+  const storedFile = db.prepare('SELECT file_url FROM resources WHERE id = ?').get(resourceId).file_url;
+  const storedPath = require('path').join(UPLOAD_DIR, storedFile);
+  r = await api('DELETE', `/api/admin/resources/${resourceId}`);
+  check('admin deletes resource and its file', r.status === 200 && !require('fs').existsSync(storedPath));
+
+  /* ===================== Premium (EduFlex Plus) ===================== */
+
+  // 39. Free students are blocked from Plus features
+  await api('POST', '/api/auth/login', { email: studentEmail, password: 'secret123' });
+  r = await api('GET', '/api/auth/me');
+  check('new students start on the free plan', r.data.user.plan === 'free' && r.data.user.is_plus === false);
+  const studentId = r.data.user.id;
+  r = await api('GET', '/api/smart/risk');
+  check('free plan: smart insights return 402 premium', r.status === 402 && r.data.premium === true);
+  r = await api('GET', '/api/smart/recovery');
+  check('free plan: missed-session recovery locked', r.status === 402);
+  r = await api('GET', '/api/resources?top_quality=1');
+  check('free plan: quality filter locked', r.status === 402);
+  r = await api('GET', '/api/smart/dashboard');
+  check('free plan: dashboard teaser without recommendations or risk reasons',
+    r.status === 200 && r.data.is_plus === false && r.data.recommendation.locked === true
+    && r.data.risks.every(x => x.reason === undefined));
+
+  // 40. Free plan allows exactly one roadmap
+  const pv = await api('POST', '/api/roadmaps/preview', { course_name: 'Networking Basics', current_level: 'Beginner', preferred_learning_style: 'Mixed', duration_days: 7, ai: false });
+  const rmBody = { course_name: 'Networking Basics', current_level: 'Beginner', preferred_learning_style: 'Mixed', duration_days: 7, structure: pv.data.structure };
+  r = await api('POST', '/api/roadmaps', rmBody);
+  check('free plan: first roadmap allowed', r.status === 201);
+  r = await api('POST', '/api/roadmaps', rmBody);
+  check('free plan: second roadmap needs Plus', r.status === 402 && r.data.premium === true);
+
+  // 41. Admin grants Plus → features unlock; students can't grant themselves
+  r = await api('PATCH', `/api/admin/users/${studentId}/plan`, { plan: 'plus', days: 30 });
+  check('students cannot grant plans', r.status === 403);
+  await api('POST', '/api/auth/login', { email, password: 'secret123' });
+  r = await api('PATCH', `/api/admin/users/${studentId}/plan`, { plan: 'plus', days: 30 });
+  check('admin grants Plus for 30 days', r.status === 200 && r.data.user.plan === 'plus' && !!r.data.user.plan_expires_at);
+  await api('POST', '/api/auth/login', { email: studentEmail, password: 'secret123' });
+  r = await api('GET', '/api/smart/risk');
+  check('Plus student can use smart insights', r.status === 200);
+  r = await api('POST', '/api/roadmaps', rmBody);
+  check('Plus student can create more roadmaps', r.status === 201);
+
+  // 42. Expired Plus falls back to free
+  db.prepare(`UPDATE users SET plan_expires_at = ? WHERE id = ?`).run(new Date(Date.now() - 1000).toISOString(), studentId);
+  r = await api('GET', '/api/smart/risk');
+  check('expired Plus is treated as free', r.status === 402);
+
+  /* ===================== Password reset, password change, brute-force protection ===================== */
+
+  // 43. Forgot password → emailed link → new password; old one stops working; link is single-use
+  await api('POST', '/api/auth/logout');
+  r = await api('POST', '/api/auth/forgot', { email: `nobody${stamp}@students.eduflex-test.ac.ke` });
+  check('forgot password gives the same answer for unknown emails', r.status === 200 && !lastEmail(`nobody${stamp}@students.eduflex-test.ac.ke`));
+  r = await api('POST', '/api/auth/forgot', { email: studentEmail });
+  const resetLink = linkIn(lastEmail(studentEmail), /http\S+\/reset\.html\?token=\S+/);
+  check('reset link emailed', r.status === 200 && !!resetLink);
+  const resetToken = resetLink ? decodeURIComponent(new URL(resetLink).searchParams.get('token')) : '';
+  r = await api('POST', '/api/auth/reset', { token: resetToken, password: 'weak' });
+  check('reset rejects a weak password (link still usable)', r.status === 400);
+  r = await api('POST', '/api/auth/reset', { token: resetToken, password: 'NewPassw0rd' });
+  check('password reset succeeds', r.status === 200);
+  r = await api('POST', '/api/auth/reset', { token: resetToken, password: 'Another1pass' });
+  check('reset link works only once', r.status === 400);
+  r = await api('POST', '/api/auth/login', { email: studentEmail, password: 'secret123' });
+  check('old password no longer works', r.status === 401);
+  r = await api('POST', '/api/auth/login', { email: studentEmail, password: 'NewPassw0rd' });
+  check('new password works', r.status === 200);
+
+  // 44. Changing the password in Profile needs the current password
+  r = await api('PUT', '/api/auth/profile', { password: 'Changed123' });
+  check('password change without current password rejected', r.status === 400);
+  r = await api('PUT', '/api/auth/profile', { password: 'Changed123', current_password: 'NewPassw0rd' });
+  check('password change with current password succeeds', r.status === 200);
+
+  // 45. Too many wrong passwords → temporarily blocked
+  await api('POST', '/api/auth/logout');
+  for (let i = 0; i < 5; i++) await api('POST', '/api/auth/login', { email: studentEmail, password: 'wrong-guess1' });
+  r = await api('POST', '/api/auth/login', { email: studentEmail, password: 'Changed123' });
+  check('login blocked after 5 wrong passwords', r.status === 429);
+
+  /* ===================== Continue with Google ===================== */
+
+  // 46. Config + redirect to Google
+  await api('POST', '/api/auth/logout');
+  r = await api('GET', '/api/auth/config');
+  check('login page is told Google sign-in is available', r.status === 200 && r.data.google === true);
+  let g = await startGoogle();
+  check('"Continue with Google" redirects to Google with client id, state and nonce',
+    g.r.status === 302 && g.url.origin === 'https://accounts.google.com'
+    && g.url.searchParams.get('client_id') === process.env.GOOGLE_CLIENT_ID
+    && !!g.state && !!g.nonce && /\/api\/auth\/google\/callback$/.test(g.url.searchParams.get('redirect_uri')));
+
+  // 47. Forged / replayed callbacks are rejected
+  r = await googleCallback('forged-state', { sub: 'x', email: 'x@gmail.com', email_verified: true, nonce: g.nonce });
+  check('callback with a wrong state is rejected', /google=error/.test(r.location));
+  r = await googleCallback(g.state, { sub: 'x', email: 'x@gmail.com', email_verified: true, nonce: g.nonce });
+  check('a sign-in attempt cannot be replayed', /google=error/.test(r.location));
+
+  // 48. New student signs up with Google
+  const gEmail = `grace${stamp}@gmail.com`;
+  g = await startGoogle();
+  r = await googleCallback(g.state, { sub: `google-${stamp}`, email: gEmail, email_verified: true,
+    given_name: 'Grace', family_name: 'Wanjiru', name: 'Grace Wanjiru', nonce: g.nonce });
+  check('Google sign-up logs in and opens setup', r.status === 302 && /\/app\.html#\/setup$/.test(r.location));
+  r = await api('GET', '/api/auth/me');
+  check('Google account is confirmed, linked, initials GW, no password',
+    r.status === 200 && r.data.user.email === gEmail && r.data.user.email_verified && r.data.user.google_linked
+    && r.data.user.public_username === 'GW' && r.data.user.has_password === false);
+  check('new Google account must finish its profile', r.data.user.profile_complete === false);
+  r = await api('PUT', '/api/auth/profile', { first_name: 'Grace', last_name: 'Wanjiru', institution: 'Strathmore University', programme: 'BBIT' });
+  check('profile completed (institution + programme)', r.status === 200 && r.data.user.profile_complete === true);
+  r = await api('PUT', '/api/auth/profile', { password: 'GracePass2026' });
+  check('Google user can set a first password without a current one', r.status === 200 && r.data.user.has_password === true);
+
+  // 49. Returning Google user signs straight in
+  await api('POST', '/api/auth/logout');
+  g = await startGoogle();
+  r = await googleCallback(g.state, { sub: `google-${stamp}`, email: gEmail, email_verified: true, nonce: g.nonce });
+  const meAgain = await api('GET', '/api/auth/me');
+  check('returning Google user signs in to the same account', r.status === 302 && meAgain.data.user.email === gEmail);
+
+  // 50. Google account matching an existing email/password account links to it
+  await api('POST', '/api/auth/logout');
+  g = await startGoogle();
+  r = await googleCallback(g.state, { sub: `google-student-${stamp}`, email: studentEmail, email_verified: true, nonce: g.nonce });
+  r = await api('GET', '/api/auth/me');
+  check('Google sign-in links to the existing account with that email',
+    r.data.user.id === studentId && r.data.user.google_linked === true && r.data.user.has_password === true);
+
+  // 51. Unsafe tokens are refused
+  await api('POST', '/api/auth/logout');
+  g = await startGoogle();
+  r = await googleCallback(g.state, { sub: 'unverified-1', email: `unv${stamp}@gmail.com`, email_verified: false, nonce: g.nonce });
+  check('Google accounts with unverified emails are refused', /google=unverified/.test(r.location));
+  g = await startGoogle();
+  r = await googleCallback(g.state, { sub: 'aud-1', email: `aud${stamp}@gmail.com`, email_verified: true, nonce: g.nonce, aud: 'someone-elses-app' });
+  check('ID tokens meant for another app are refused', /google=error/.test(r.location));
+  g = await startGoogle();
+  r = await googleCallback(g.state, { sub: 'nonce-1', email: `nonce${stamp}@gmail.com`, email_verified: true, nonce: 'wrong-nonce' });
+  check('ID tokens from a different sign-in attempt are refused', /google=error/.test(r.location));
+
+  // 52. Password login on a Google-only account explains what to do
+  g = await startGoogle();
+  const onlyGoogle = `only${stamp}@gmail.com`;
+  await googleCallback(g.state, { sub: `only-${stamp}`, email: onlyGoogle, email_verified: true, given_name: 'Ola', family_name: 'Kim', nonce: g.nonce });
+  await api('POST', '/api/auth/logout');
+  r = await api('POST', '/api/auth/login', { email: onlyGoogle, password: 'whatever123' });
+  check('password login on a Google-only account points to Google', r.status === 400 && r.data.google_only === true);
 
   console.log(`\nResults: ${passed} passed, ${failed} failed\n`);
   process.exit(failed ? 1 : 0);

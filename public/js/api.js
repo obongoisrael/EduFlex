@@ -16,6 +16,13 @@ const API = {
       throw new Error('Not authenticated');
     }
     const data = await res.json().catch(() => ({}));
+    if (res.status === 402 && data.premium) {
+      // EduFlex Plus feature — show the upgrade prompt, then fail the call
+      if (typeof showUpgrade === 'function') showUpgrade(data.error);
+      const err = new Error(data.error || 'This is an EduFlex Plus feature.');
+      err.premium = true;
+      throw err;
+    }
     if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
     return data;
   },

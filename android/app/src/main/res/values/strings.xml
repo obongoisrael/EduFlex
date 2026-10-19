@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">eduflex</string>
+    <string name="title_activity_main">eduflex</string>
+    <string name="package_name">com.eduflex.app</string>
+    <string name="custom_url_scheme">com.eduflex.app</string>
+</resources>

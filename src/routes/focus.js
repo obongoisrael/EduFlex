@@ -28,6 +28,11 @@ router.post('/', safe((req, res) => {
     const c = db.prepare('SELECT id FROM courses WHERE id = ? AND user_id = ?').get(Number(course_id), req.session.userId);
     if (!c) return res.status(400).json({ error: 'Course not found.' });
   }
+  if (study_session_id) {
+    const s = db.prepare('SELECT id FROM study_sessions WHERE id = ? AND user_id = ?')
+      .get(Number(study_session_id), req.session.userId);
+    if (!s) return res.status(400).json({ error: 'Study session not found.' });
+  }
 
   const ts = nowISO();
   const info = db.prepare(

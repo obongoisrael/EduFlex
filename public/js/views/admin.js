@@ -60,6 +60,7 @@ async function adminOverview(body) {
       ${stat('📚', s.total_resources, 'Resources', 'text-violet-600')}
       ${stat('📘', s.total_courses, 'Courses', 'text-amber-600')}
       ${stat('🗓️', s.total_sessions, 'Study sessions', 'text-slate-700')}
+      ${stat('👑', s.plus_users, 'Plus subscribers', 'text-amber-600')}
     </div>
 
     <div class="grid lg:grid-cols-2 gap-4 mt-4">
@@ -132,9 +133,11 @@ async function adminUsers(body) {
             <div class="flex flex-col items-end gap-1 shrink-0">
               ${badge(u.role, u.role === 'admin' ? 'bg-violet-100 text-violet-700' : 'bg-slate-100 text-slate-600')}
               ${badge(u.account_status, u.account_status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700')}
+              ${planActiveRow(u) ? badge(`👑 Plus${u.plan_expires_at ? ` · ${fmtDate(u.plan_expires_at)}` : ''}`, 'bg-amber-100 text-amber-700') : ''}
             </div>
           </div>
           <div class="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-50">
+            ${u.id !== App.user.id ? `
             <button data-status="${u.id}" data-to="${u.account_status === 'active' ? 'inactive' : 'active'}"
               class="btn btn-sm ${u.account_status === 'active' ? 'btn-ghost' : 'btn-success'}">
               ${u.account_status === 'active' ? 'Deactivate' : 'Activate'}
@@ -142,7 +145,11 @@ async function adminUsers(body) {
             <button data-role="${u.id}" data-to="${u.role === 'admin' ? 'student' : 'admin'}" class="btn btn-soft btn-sm">
               ${u.role === 'admin' ? 'Demote to student' : 'Promote to admin'}
             </button>
-            ${u.id !== App.user.id ? `<button data-del="${u.id}" class="btn btn-sm border border-rose-200 text-rose-600 bg-white">Delete</button>` : '<span class="text-[11px] text-slate-400 self-center">(you)</span>'}
+            ${planActiveRow(u)
+              ? `<button data-plan-off="${u.id}" class="btn btn-sm btn-ghost">Remove Plus</button>`
+              : `<button data-plan-on="${u.id}" class="btn btn-sm bg-amber-100 text-amber-800">👑 Grant Plus</button>`}
+            <button data-del="${u.id}" class="btn btn-sm border border-rose-200 text-rose-600 bg-white">Delete</button>`
+            : '<span class="text-[11px] text-slate-400 self-center">(you — your own account can\'t be changed here)</span>'}
           </div>
         </div>`).join('')}
     </div>`;
@@ -158,6 +165,26 @@ async function adminUsers(body) {
   body.querySelectorAll('[data-role]').forEach(b => b.onclick = async () => {
     if (!await confirmModal(`Change this user's role to ${b.dataset.to}?`, 'Change role')) return;
     try { await API.patch(`/api/admin/users/${b.dataset.role}/role`, { role: b.dataset.to }); toast(`Role set to ${b.dataset.to}.`); adminUsers(body); }
+    catch (err) { toast(err.message, 'error'); }
+  });
+  body.querySelectorAll('[data-plan-on]').forEach(b => b.onclick = () => {
+    const u = users.find(x => x.id === Number(b.dataset.planOn));
+    openModal('Grant EduFlex Plus', `
+      <p class="text-sm text-slate-600">Activate Plus for <strong>${esc(u.email)}</strong> for:</p>
+      <div class="grid grid-cols-2 gap-2 mt-4">
+        ${[[30, '1 month'], [120, 'Semester (4 months)'], [365, '1 year'], [0, 'No expiry']]
+          .map(([d, t]) => `<button data-days="${d}" class="btn btn-ghost">${t}</button>`).join('')}
+      </div>`);
+    document.querySelectorAll('#modalRoot [data-days]').forEach(x => x.onclick = async () => {
+      try {
+        await API.patch(`/api/admin/users/${u.id}/plan`, { plan: 'plus', days: Number(x.dataset.days) });
+        closeModal(); toast('EduFlex Plus activated. 👑'); adminUsers(body);
+      } catch (err) { toast(err.message, 'error'); }
+    });
+  });
+  body.querySelectorAll('[data-plan-off]').forEach(b => b.onclick = async () => {
+    if (!await confirmModal('Remove EduFlex Plus from this account?', 'Remove Plus')) return;
+    try { await API.patch(`/api/admin/users/${b.dataset.planOff}/plan`, { plan: 'free' }); toast('Plus removed.'); adminUsers(body); }
     catch (err) { toast(err.message, 'error'); }
   });
   body.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
@@ -335,4 +362,9 @@ function adminSettings(body) {
         Student-facing pages always show initials and institution only.
       </div>
     </div>`;
+}
+
+/** Plus active on an admin user-list row (mirrors the server rule, minus the admin shortcut). */
+function planActiveRow(u) {
+  return u.plan === 'plus' && (!u.plan_expires_at || new Date(u.plan_expires_at) > new Date());
 }

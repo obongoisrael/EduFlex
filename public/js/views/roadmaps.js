@@ -28,7 +28,7 @@ async function roadmapList(el) {
 
   el.innerHTML = `
     <div class="flex items-center justify-between gap-3 mb-4">
-      <p class="text-sm text-slate-500">Structured paths for any course or topic.</p>
+      <p class="text-sm text-slate-500">Structured paths for any course or topic.${App.isPlus() ? '' : ` <span class="free-badge">${roadmaps.length}/1 FREE</span>`}</p>
       <a href="#/roadmaps/new" class="btn btn-primary btn-sm shrink-0">+ New Roadmap</a>
     </div>
     ${roadmaps.length === 0
@@ -87,11 +87,19 @@ async function roadmapNew(el) {
         </div>
         <div class="mt-4">${field('Target goal', `<textarea class="inp" id="rf_goal" rows="2" placeholder="e.g. Score an A in the end-of-semester exam"></textarea>`)}</div>
         <button id="rf_generate" class="btn btn-primary btn-block mt-5">✨ Generate my roadmap</button>
+        <p id="rf_ai" class="text-[11px] text-slate-400 text-center mt-2"></p>
       </div>
       <div id="previewArea" class="mt-5"></div>
     </div>`;
 
   let structure = null;
+  // AI status line (Claude builds the roadmap when configured and within the monthly quota)
+  let aiStatus = null;
+  API.get('/api/roadmaps/ai').then(ai => {
+    aiStatus = ai;
+    const note = document.getElementById('rf_ai');
+    if (note) note.textContent = aiRoadmapNote(ai);
+  }).catch(() => {});
   const readForm = () => ({
     course_name: document.getElementById('rf_name').value.trim(),
     course_code: document.getElementById('rf_code').value.trim(),
@@ -110,12 +118,13 @@ async function roadmapNew(el) {
     const form = readForm();
     if (!form.course_name) return toast('Enter the course, unit or topic name.', 'error');
     const btn = document.getElementById('rf_generate');
-    btn.disabled = true; btn.textContent = 'Generating…';
+    btn.disabled = true; btn.textContent = aiRoadmapReady(aiStatus) ? '✨ Building with AI… (up to a minute)' : 'Generating…';
     try {
       const r = await API.post('/api/roadmaps/preview', form);
       structure = r.structure;
       renderPreview();
-      toast(structure.source === 'template' ? 'Built from an expert template — edit before saving. 📋' : 'Custom roadmap generated — edit before saving. ✨', 'info');
+      toast(roadmapSourceMessage(structure, r.ai, false), 'info');
+      if (r.ai) { aiStatus = { configured: aiStatus ? aiStatus.configured : true, ...r.ai }; document.getElementById('rf_ai').textContent = aiRoadmapNote(aiStatus); }
       document.getElementById('previewArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (err) { toast(err.message, 'error'); }
     btn.disabled = false; btn.textContent = '✨ Generate my roadmap';
@@ -128,7 +137,7 @@ async function roadmapNew(el) {
       <div class="card p-5 sm:p-6 border-indigo-200">
         <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
           <h3 class="font-bold text-slate-900">Preview — edit before saving</h3>
-          <span class="text-[11px] text-slate-400">${badge(structure.source === 'template' ? '📋 Template' : '✨ Custom', 'bg-indigo-50 text-indigo-700')} ~${Math.round(totalH)}h</span>
+          <span class="text-[11px] text-slate-400">${badge(ROADMAP_SOURCE_BADGE[structure.source] || '🗺️ Custom', 'bg-indigo-50 text-indigo-700')} ~${Math.round(totalH)}h</span>
         </div>
         <p class="text-xs text-slate-400 mb-4">Rename anything, adjust hours, remove topics you know, or add your own.</p>
         ${structure.stages.map((st, si) => `
