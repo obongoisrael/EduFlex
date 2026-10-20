@@ -13,9 +13,9 @@ Views.profile = async (el) => {
         <h3 class="font-bold text-slate-900 mt-4">${esc(u.public_username)}</h3>
         <p class="text-sm text-slate-500">${esc(u.institution)}</p>
         <p class="text-xs text-slate-400 mt-1">${esc(u.programme)}</p>
-        ${u.role === 'admin' ? `<div class="mt-3">${badge('🛡️ Administrator', 'bg-violet-100 text-violet-700')}</div>` : ''}
+        ${u.role === 'admin' ? `<div class="mt-3">${badge('Administrator', 'bg-violet-100 text-violet-700')}</div>` : ''}
         <div class="mt-5 text-xs bg-indigo-50 text-indigo-800 border border-indigo-100 rounded-2xl p-3.5 text-left leading-relaxed">
-          🔒 <strong>This is your public identity.</strong> Other students see only your initials and institution —
+          <strong>This is your public identity.</strong> Other students see only your initials and institution —
           your full name (${esc(u.first_name)} ${esc(u.last_name)}) stays private.
         </div>
         <p class="text-[11px] text-slate-300 mt-4">Member since ${fmtDate(u.created_at)}</p>
@@ -34,7 +34,6 @@ Views.profile = async (el) => {
 
         <div class="card p-5 sm:p-6">
           <h3 class="font-bold text-slate-900">Profile settings</h3>
-          <p class="text-xs text-slate-400 mt-1 mb-5">Changing your name updates your public initials automatically.</p>
           <form id="profileForm" class="space-y-4">
             <div class="grid sm:grid-cols-2 gap-3">
               ${field('First name', `<input class="inp" id="pf_first" required value="${esc(u.first_name)}">`)}
@@ -49,11 +48,10 @@ Views.profile = async (el) => {
             <div class="grid sm:grid-cols-2 gap-3">
               ${field(u.has_password ? 'New password <span class="text-slate-400 font-normal">(leave blank to keep)</span>'
                 : 'Set a password <span class="text-slate-400 font-normal">(optional — you sign in with Google)</span>',
-                `<input type="password" class="inp" id="pf_pass" minlength="8" placeholder="••••••••" autocomplete="new-password">`)}
+                `<input type="password" class="inp" id="pf_pass" minlength="8" autocomplete="new-password">`)}
               ${u.has_password ? field('Current password <span class="text-slate-400 font-normal">(to change it)</span>',
-                `<input type="password" class="inp" id="pf_current" placeholder="••••••••" autocomplete="current-password">`) : ''}
+                `<input type="password" class="inp" id="pf_current" autocomplete="current-password">`) : ''}
             </div>
-            <p class="text-xs text-slate-400 -mt-2">New passwords need at least 8 characters, with letters and numbers.</p>
             <div class="flex justify-end">
               <button type="submit" class="btn btn-primary btn-block sm:w-auto">Save changes</button>
             </div>
@@ -63,19 +61,19 @@ Views.profile = async (el) => {
         <div class="card p-5 sm:p-6 space-y-4">
           <h3 class="font-bold text-slate-900 text-sm">Notifications &amp; privacy</h3>
           <label class="flex items-center justify-between gap-3 text-sm text-slate-700 cursor-pointer">
-            <span>🔔 Browser notifications for reminders ${App.isPlus() ? '' : proBadge()}</span>
+            <span>Browser notifications for reminders ${App.isPlus() ? '' : proBadge()}</span>
             <input type="checkbox" id="np_browser" ${prefs.browser && App.isPlus() ? 'checked' : ''} class="w-5 h-5 rounded border-slate-300 text-indigo-600 shrink-0">
           </label>
           <label class="flex items-center justify-between gap-3 text-sm text-slate-700 cursor-pointer">
-            <span>🔊 Alarm sound with reminders ${App.isPlus() ? '' : proBadge()}</span>
+            <span>Alarm sound with reminders ${App.isPlus() ? '' : proBadge()}</span>
             <input type="checkbox" id="np_sound" ${prefs.sound !== false && App.isPlus() ? 'checked' : ''} class="w-5 h-5 rounded border-slate-300 text-indigo-600 shrink-0">
           </label>
           <label class="flex items-start justify-between gap-3 text-sm text-slate-700 cursor-pointer">
-            <span>🤝 Allow Peer Study Matching<br><span class="text-xs text-slate-400">Shows only your initials + institution</span></span>
+            <span>Allow Peer Study Matching<br><span class="text-xs text-slate-400">Shows only your initials + institution</span></span>
             <input type="checkbox" id="np_peers" ${u.peer_matching_enabled ? 'checked' : ''} class="w-5 h-5 rounded border-slate-300 text-indigo-600 shrink-0 mt-0.5">
           </label>
           <div class="flex items-center justify-between gap-3 text-sm text-slate-700 bg-slate-50 rounded-2xl px-4 py-3">
-            <span>📡 Offline sync status</span>
+            <span>Offline sync status</span>
             <span id="syncStatus" class="text-xs font-semibold"></span>
           </div>
         </div>
@@ -137,7 +135,7 @@ Views.profile = async (el) => {
     try {
       await API.put('/api/peers/preferences', { enabled: e.target.checked });
       App.user.peer_matching_enabled = e.target.checked;
-      toast(e.target.checked ? 'Peer matching enabled. 🤝' : 'Peer matching disabled.', 'info');
+      toast(e.target.checked ? 'Peer matching enabled.' : 'Peer matching disabled.', 'info');
     } catch (err) { toast(err.message, 'error'); }
   };
 

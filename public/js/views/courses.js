@@ -8,7 +8,7 @@ Views.courses = async (el) => {
       <button id="addBtn" class="btn btn-primary btn-sm">+ Add Course</button>
     </div>
     ${courses.length === 0
-      ? emptyState('📘', 'No courses yet', 'Add the units you are taking this semester to get started.',
+      ? emptyState('courses', 'No courses yet', 'Add the units you are taking this semester to get started.',
           `<button onclick="document.getElementById('addBtn').click()" class="btn btn-primary">Add your first course</button>`)
       : `<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           ${courses.map(c => `
@@ -30,12 +30,12 @@ Views.courses = async (el) => {
   const showForm = (course = null) => {
     openModal(course ? 'Edit Course' : 'Add Course', `
       <form id="courseForm" class="space-y-4">
-        ${field('Course title', `<input class="inp" id="cf_title" required value="${esc(course?.title || '')}" placeholder="e.g. Database Systems">`)}
-        ${field('Course code', `<input class="inp" id="cf_code" required value="${esc(course?.code || '')}" placeholder="e.g. CSC 224">`)}
+        ${field('Course title', `<input class="inp" id="cf_title" required value="${esc(course?.title || '')}">`)}
+        ${field('Course code', `<input class="inp" id="cf_code" required value="${esc(course?.code || '')}">`)}
         ${field('Difficulty level', `<select class="inp" id="cf_diff">
             ${['Easy', 'Moderate', 'Hard'].map(dd => `<option ${course?.difficulty === dd ? 'selected' : ''}>${dd}</option>`).join('')}
           </select>`)}
-        ${field('Description (optional)', `<textarea class="inp" id="cf_desc" rows="3" placeholder="Topics covered, lecturer…">${esc(course?.description || '')}</textarea>`)}
+        ${field('Description (optional)', `<textarea class="inp" id="cf_desc" rows="3">${esc(course?.description || '')}</textarea>`)}
         <div class="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
           <button type="button" onclick="closeModal()" class="btn btn-ghost">Cancel</button>
           <button type="submit" class="btn btn-primary">${course ? 'Save changes' : 'Add course'}</button>

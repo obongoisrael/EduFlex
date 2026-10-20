@@ -16,7 +16,7 @@ Views.schedule = async (el) => {
         Built from your <a href="#/availability" class="text-indigo-600 font-medium">availability</a>, course difficulty and
         <a href="#/deadlines" class="text-indigo-600 font-medium">deadline</a> urgency. Urgent work is scheduled first.
       </p>
-      <button id="genBtn" class="btn btn-primary btn-block sm:w-auto mt-4">⚡ Generate Study Schedule</button>
+      <button id="genBtn" class="btn btn-primary btn-block sm:w-auto mt-4">Generate Study Schedule</button>
       <div id="genResult" class="hidden mt-4 text-sm rounded-2xl px-4 py-3"></div>
     </div>
 
@@ -46,20 +46,20 @@ Views.schedule = async (el) => {
     ${recs.recommendations.length ? `
       <div class="card p-4 sm:p-5 mt-4 border-indigo-200">
         <div class="flex items-center justify-between mb-2">
-          <h3 class="font-bold text-slate-900 text-sm sm:text-base">✨ Smart recommendations</h3>
+          <h3 class="font-bold text-slate-900 text-sm sm:text-base">Smart recommendations</h3>
           <a href="#/insights" class="text-xs font-semibold text-indigo-600">All →</a>
         </div>
         ${recs.recommendations.map((r, i) => `
           <div class="flex flex-wrap items-center justify-between gap-3 py-3 border-b border-slate-50 last:border-0">
             <p class="text-sm text-slate-700 flex-1 min-w-[12rem]">${esc(r.reason)}</p>
-            <button data-rec-accept="${i}" class="btn btn-success btn-sm shrink-0">➕ Add</button>
+            <button data-rec-accept="${i}" class="btn btn-success btn-sm shrink-0">Add</button>
           </div>`).join('')}
       </div>` : ''}
 
     <h3 class="font-bold text-slate-900 mt-6 mb-3" id="upcomingHeading">Upcoming sessions (${upcoming.length})</h3>
     <div id="sessionList">
       ${upcoming.length === 0
-        ? emptyState('🗓️', 'No upcoming sessions', 'Tap "Generate Study Schedule" to build your adaptive plan.')
+        ? emptyState('schedule', 'No upcoming sessions', 'Tap "Generate Study Schedule" to build your adaptive plan.')
         : renderGroups(upcoming)}
     </div>`;
 
@@ -103,10 +103,10 @@ Views.schedule = async (el) => {
         const up = fresh.filter(s => s.status === 'Planned' || s.status === 'Rescheduled');
         document.getElementById('upcomingHeading').textContent = `Upcoming sessions (${up.length})`;
         document.getElementById('sessionList').innerHTML = up.length ? renderGroups(up)
-          : emptyState('🗓️', 'No upcoming sessions', 'Add deadlines and availability first.');
+          : emptyState('schedule', 'No upcoming sessions', 'Add deadlines and availability first.');
       }
     } catch (err) { toast(err.message, 'error'); }
-    genBtn.disabled = false; genBtn.textContent = '⚡ Generate Study Schedule';
+    genBtn.disabled = false; genBtn.textContent = 'Generate Study Schedule';
   }
   genBtn.onclick = generate;
   if (location.hash.includes('generate=1')) { history.replaceState(null, '', '#/schedule'); generate(); }
@@ -151,7 +151,7 @@ Views.schedule = async (el) => {
         start_datetime: r.suggested_start, end_datetime: r.suggested_end,
         intensity: r.intensity, title: `${r.course_code}: study for ${r.deadline_title}`,
       });
-      toast('Session added. 🗓️'); Views.schedule(el);
+      toast('Session added.'); Views.schedule(el);
     } catch (err) { toast(err.message, 'error'); }
   });
 };

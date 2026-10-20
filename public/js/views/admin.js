@@ -6,14 +6,14 @@
 Views.admin = async (el, args = []) => {
   const tab = args[0] || 'dashboard';
   const TABS = [
-    ['dashboard', '📊 Overview'], ['users', '👥 Users'], ['resources', '📚 Resources'],
-    ['courses', '📘 Courses'], ['reports', '🚩 Reports'], ['settings', '⚙️ Settings'],
+    ['dashboard', 'Overview'], ['users', 'Users'], ['resources', 'Resources'],
+    ['courses', 'Courses'], ['reports', 'Reports'], ['settings', 'Settings'],
   ];
 
   el.innerHTML = `
     <div class="rounded-3xl p-5 text-white bg-gradient-to-br from-slate-800 to-slate-900 shadow-xl">
       <div class="flex items-center gap-3">
-        <span class="text-2xl">🛡️</span>
+        <span class="w-10 h-10 rounded-xl bg-violet-100 text-violet-700 grid place-items-center [&_svg]:w-5 [&_svg]:h-5">${icon('admin')}</span>
         <div class="min-w-0">
           <h2 class="font-bold">Admin Console</h2>
           <p class="text-xs text-slate-400 truncate">Signed in as ${esc(App.user.email)}</p>
@@ -46,26 +46,26 @@ const fullName = (u) => `${u.first_name || ''} ${u.last_name || ''}`.trim() || '
 async function adminOverview(body) {
   const d = await API.get('/api/admin/stats');
   const s = d.stats;
-  const stat = (icon, value, label, color) => `
+  const stat = (ic, value, label, color) => `
     <div class="card p-4">
-      <div class="text-lg">${icon}</div>
+      <div class="[&_svg]:w-5 [&_svg]:h-5 ${color}">${icon(ic)}</div>
       <div class="text-2xl font-extrabold ${color} mt-1.5">${value}</div>
       <div class="text-[11px] text-slate-400">${label}</div>
     </div>`;
 
   body.innerHTML = `
     <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
-      ${stat('👥', s.total_users, 'Total users', 'text-indigo-600')}
-      ${stat('✅', s.active_users, 'Active users', 'text-emerald-600')}
-      ${stat('📚', s.total_resources, 'Resources', 'text-violet-600')}
-      ${stat('📘', s.total_courses, 'Courses', 'text-amber-600')}
-      ${stat('🗓️', s.total_sessions, 'Study sessions', 'text-slate-700')}
-      ${stat('👑', s.plus_users, 'Plus subscribers', 'text-amber-600')}
+      ${stat('users', s.total_users, 'Total users', 'text-indigo-600')}
+      ${stat('check', s.active_users, 'Active users', 'text-emerald-600')}
+      ${stat('resources', s.total_resources, 'Resources', 'text-violet-600')}
+      ${stat('courses', s.total_courses, 'Courses', 'text-amber-600')}
+      ${stat('schedule', s.total_sessions, 'Study sessions', 'text-slate-700')}
+      ${stat('crown', s.plus_users, 'Plus subscribers', 'text-amber-600')}
     </div>
 
     <div class="grid lg:grid-cols-2 gap-4 mt-4">
       <section class="card p-5">
-        <h3 class="font-bold text-slate-900 text-sm mb-3">🆕 Recent registrations</h3>
+        <h3 class="font-bold text-slate-900 text-sm mb-3">Recent registrations</h3>
         ${d.recent_registrations.length === 0 ? '<p class="text-sm text-slate-400 py-3">No users yet.</p>'
           : d.recent_registrations.map(u => `
             <div class="flex items-center justify-between gap-3 py-2.5 border-b border-slate-50 last:border-0">
@@ -81,7 +81,7 @@ async function adminOverview(body) {
       </section>
 
       <section class="card p-5">
-        <h3 class="font-bold text-slate-900 text-sm mb-3">📤 Recent uploads</h3>
+        <h3 class="font-bold text-slate-900 text-sm mb-3">Recent uploads</h3>
         ${d.recent_resources.length === 0 ? '<p class="text-sm text-slate-400 py-3">No resources yet.</p>'
           : d.recent_resources.map(r => `
             <div class="flex items-center justify-between gap-3 py-2.5 border-b border-slate-50 last:border-0">
@@ -95,9 +95,9 @@ async function adminOverview(body) {
     </div>
 
     <section class="card p-5 mt-4">
-      <h3 class="font-bold text-slate-900 text-sm mb-3">🚩 Moderation queue</h3>
+      <h3 class="font-bold text-slate-900 text-sm mb-3">Moderation queue</h3>
       ${d.moderation_list.length === 0
-        ? '<p class="text-sm text-slate-400 py-3">Nothing awaiting moderation. 🎉</p>'
+        ? '<p class="text-sm text-slate-400 py-3">Nothing awaiting moderation.</p>'
         : d.moderation_list.map(r => `
           <div class="flex items-center justify-between gap-3 py-2.5 border-b border-slate-50 last:border-0">
             <div class="min-w-0">
@@ -115,7 +115,7 @@ async function adminUsers(body) {
 
   body.innerHTML = `
     <div class="card p-4 mb-4">
-      <input id="uSearch" class="inp" placeholder="Search by email, institution or programme…" value="${esc(state.search)}">
+      <input id="uSearch" class="inp" placeholder="Search users" value="${esc(state.search)}">
     </div>
     <p class="text-xs text-slate-400 mb-3">${users.length} user${users.length === 1 ? '' : 's'} · full names visible to admins only</p>
     <div class="space-y-3">
@@ -133,7 +133,7 @@ async function adminUsers(body) {
             <div class="flex flex-col items-end gap-1 shrink-0">
               ${badge(u.role, u.role === 'admin' ? 'bg-violet-100 text-violet-700' : 'bg-slate-100 text-slate-600')}
               ${badge(u.account_status, u.account_status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700')}
-              ${planActiveRow(u) ? badge(`👑 Plus${u.plan_expires_at ? ` · ${fmtDate(u.plan_expires_at)}` : ''}`, 'bg-amber-100 text-amber-700') : ''}
+              ${planActiveRow(u) ? badge(`Plus${u.plan_expires_at ? ` · ${fmtDate(u.plan_expires_at)}` : ''}`, 'bg-amber-100 text-amber-700') : ''}
             </div>
           </div>
           <div class="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-50">
@@ -147,7 +147,7 @@ async function adminUsers(body) {
             </button>
             ${planActiveRow(u)
               ? `<button data-plan-off="${u.id}" class="btn btn-sm btn-ghost">Remove Plus</button>`
-              : `<button data-plan-on="${u.id}" class="btn btn-sm bg-amber-100 text-amber-800">👑 Grant Plus</button>`}
+              : `<button data-plan-on="${u.id}" class="btn btn-sm bg-amber-100 text-amber-800">Grant Plus</button>`}
             <button data-del="${u.id}" class="btn btn-sm border border-rose-200 text-rose-600 bg-white">Delete</button>`
             : '<span class="text-[11px] text-slate-400 self-center">(you — your own account can\'t be changed here)</span>'}
           </div>
@@ -178,7 +178,7 @@ async function adminUsers(body) {
     document.querySelectorAll('#modalRoot [data-days]').forEach(x => x.onclick = async () => {
       try {
         await API.patch(`/api/admin/users/${u.id}/plan`, { plan: 'plus', days: Number(x.dataset.days) });
-        closeModal(); toast('EduFlex Plus activated. 👑'); adminUsers(body);
+        closeModal(); toast('EduFlex Plus activated.'); adminUsers(body);
       } catch (err) { toast(err.message, 'error'); }
     });
   });
@@ -203,7 +203,7 @@ async function adminResources(body) {
 
   body.innerHTML = `
     <div class="card p-4 mb-4 grid sm:grid-cols-2 gap-2">
-      <input id="rSearch" class="inp" placeholder="Search title, course or uploader email…" value="${esc(state.search)}">
+      <input id="rSearch" class="inp" placeholder="Search resources" value="${esc(state.search)}">
       <select id="rStatus" class="inp">
         <option value="">All statuses</option>
         ${['Approved', 'Rejected', 'Pending'].map(s => `<option ${state.status === s ? 'selected' : ''}>${s}</option>`).join('')}
@@ -223,13 +223,13 @@ async function adminResources(body) {
             ${badge(r.moderation_status, r.moderation_status === 'Approved' ? 'bg-emerald-100 text-emerald-700' : r.moderation_status === 'Rejected' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700')}
           </div>
           <div class="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-50">
-            <a href="/api/resources/${r.id}/view" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">👁 View</a>
+            <a href="/api/resources/${r.id}/view" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">View</a>
             ${r.moderation_status !== 'Approved' ? `<button data-approve="${r.id}" class="btn btn-success btn-sm">✓ Approve</button>` : ''}
             ${r.moderation_status !== 'Rejected' ? `<button data-reject="${r.id}" class="btn btn-sm bg-amber-500 text-white">✗ Reject</button>` : ''}
-            <button data-del="${r.id}" class="btn btn-sm border border-rose-200 text-rose-600 bg-white">🗑 Delete</button>
+            <button data-del="${r.id}" class="btn btn-sm border border-rose-200 text-rose-600 bg-white">Delete</button>
           </div>
         </div>`).join('')}
-      ${resources.length === 0 ? emptyState('📚', 'No resources found', 'Try a different search or status filter.') : ''}
+      ${resources.length === 0 ? emptyState('resources', 'No resources found', 'Try a different search or status filter.') : ''}
     </div>`;
 
   let deb;
@@ -259,7 +259,7 @@ async function adminCourses(body) {
   ]);
   body.innerHTML = `
     <section class="card p-5">
-      <h3 class="font-bold text-slate-900 text-sm mb-3">📘 All courses (${courses.length})</h3>
+      <h3 class="font-bold text-slate-900 text-sm mb-3">All courses (${courses.length})</h3>
       <div class="overflow-x-auto -mx-5 px-5">
         <table class="w-full text-sm min-w-[520px]">
           <thead><tr class="text-left text-xs text-slate-400 border-b border-slate-100">
@@ -278,7 +278,7 @@ async function adminCourses(body) {
     </section>
 
     <section class="card p-5 mt-4">
-      <h3 class="font-bold text-slate-900 text-sm mb-3">🗓️ Recent study sessions (${sessions.length})</h3>
+      <h3 class="font-bold text-slate-900 text-sm mb-3">Recent study sessions (${sessions.length})</h3>
       <div class="space-y-2">
         ${sessions.slice(0, 25).map(s => `
           <div class="flex items-center justify-between gap-3 py-2 border-b border-slate-50 last:border-0">
@@ -298,7 +298,7 @@ async function adminReports(body) {
   body.innerHTML = `
     <p class="text-xs text-slate-400 mb-3">Resources flagged or awaiting moderation.</p>
     ${reports.length === 0
-      ? emptyState('🚩', 'No reported content', 'Everything in the library is approved. 🎉')
+      ? emptyState('flag', 'No reported content', 'Everything in the library is approved.')
       : `<div class="space-y-3">${reports.map(r => `
           <div class="card p-4">
             <div class="flex items-start justify-between gap-3">
@@ -311,9 +311,9 @@ async function adminReports(body) {
               ${badge(r.moderation_status, 'bg-amber-100 text-amber-700')}
             </div>
             <div class="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-50">
-              <a href="/api/resources/${r.id}/view" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">👁 View</a>
+              <a href="/api/resources/${r.id}/view" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">View</a>
               <button data-approve="${r.id}" class="btn btn-success btn-sm">✓ Approve</button>
-              <button data-del="${r.id}" class="btn btn-sm border border-rose-200 text-rose-600 bg-white">🗑 Delete</button>
+              <button data-del="${r.id}" class="btn btn-sm border border-rose-200 text-rose-600 bg-white">Delete</button>
             </div>
           </div>`).join('')}</div>`}`;
 
@@ -358,7 +358,7 @@ function adminSettings(body) {
       </div>
 
       <div class="mt-4 bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs text-amber-800 leading-relaxed">
-        🔒 <strong>Privacy reminder:</strong> full student names are visible only inside this admin console.
+        <strong>Privacy reminder:</strong> full student names are visible only inside this admin console.
         Student-facing pages always show initials and institution only.
       </div>
     </div>`;

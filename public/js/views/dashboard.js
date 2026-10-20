@@ -49,13 +49,13 @@ Views.dashboard = async (el) => {
   el.innerHTML = `
     <div class="max-w-2xl mx-auto space-y-4">
       ${greetingHeader()}
-      ${smart.weekly.streak >= 1 ? `<div class="inline-flex items-center gap-1.5 bg-orange-50 text-orange-700 border border-orange-100 rounded-full px-3 py-1 text-xs font-semibold -mt-1">🔥 ${smart.weekly.streak}-day study streak</div>` : ''}
+      ${smart.weekly.streak >= 1 ? `<div class="inline-flex items-center gap-1.5 bg-orange-50 text-orange-700 border border-orange-100 rounded-full px-3 py-1 text-xs font-semibold -mt-1">${smart.weekly.streak}-day study streak</div>` : ''}
 
       ${plus ? '' : `
         <a href="#/premium" class="card flex items-center gap-3 p-3 pr-4 bg-gradient-to-r from-amber-50 to-white active:scale-[.99] transition">
           <span class="w-12 h-12 rounded-2xl grid place-items-center text-white bg-gradient-to-br from-amber-400 to-orange-500 shadow-md shadow-amber-500/30 shrink-0 [&_svg]:w-6 [&_svg]:h-6">${icon('crown')}</span>
           <span class="flex-1 min-w-0">
-            <span class="block text-[10px] font-bold tracking-wider text-amber-600">👑 PREMIUM</span>
+            <span class="block text-[10px] font-bold tracking-wider text-amber-600">PREMIUM</span>
             <span class="block text-sm font-semibold text-slate-800 truncate">Unlock Smart Insights & unlimited roadmaps</span>
           </span>
           <span class="w-8 h-8 rounded-full bg-white border border-slate-200 grid place-items-center text-slate-500 shrink-0 [&_svg]:w-4 [&_svg]:h-4">${icon('chevron')}</span>
@@ -64,7 +64,7 @@ Views.dashboard = async (el) => {
       ${d.course_count === 0 ? `
         <a href="#/setup" class="block rounded-3xl px-5 py-4 text-white bg-gradient-to-r from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/25 active:scale-[.99] transition">
           <div class="flex items-center justify-between gap-3">
-            <div><div class="font-bold text-sm">🚀 Finish your 2-minute setup</div>
+            <div><div class="font-bold text-sm">Finish your 2-minute setup</div>
             <div class="text-xs text-emerald-50 mt-0.5">Add courses & free time — we'll build your first schedule.</div></div>
             <span class="text-xl shrink-0">→</span>
           </div>
@@ -88,11 +88,11 @@ Views.dashboard = async (el) => {
             <span class="text-xs font-semibold text-slate-500 w-11 shrink-0">${s.start_datetime.slice(11)}</span>
             <span class="w-1 self-stretch rounded-full ${SESSION_DOT[s.status] || 'bg-slate-300'}"></span>
             <span class="flex-1 min-w-0">
-              <span class="block text-sm font-medium text-slate-800 truncate">${s.reminder_enabled ? '🔔 ' : ''}${esc(s.title)}</span>
+              <span class="block text-sm font-medium text-slate-800 truncate">${s.reminder_enabled ? '' : ''}${esc(s.title)}</span>
               <span class="block text-[11px] text-slate-400">${s.start_datetime.slice(11)} – ${s.end_datetime.slice(11)} · ${esc(s.status)}</span>
             </span>
           </a>`).join('') : `
-          <p class="text-sm text-slate-500 py-2">🎉 No study sessions today.</p>
+          <p class="text-sm text-slate-500 py-2">No study sessions today.</p>
           ${nextSession ? `
             <a href="#/calendar" class="flex items-center gap-3 bg-indigo-50/60 rounded-2xl px-3 py-2.5">
               ${tintIcon('schedule', 'violet', '2.25rem')}
@@ -168,7 +168,7 @@ Views.dashboard = async (el) => {
       </a>
 
       <a href="#/focus" class="card flex items-center gap-3 p-4 active:scale-[.99] transition">
-        <span class="text-2xl w-11 text-center shrink-0">🍅</span>
+        ${tintIcon('focus', 'rose')}
         <span class="flex-1 min-w-0">
           <span class="block font-semibold text-slate-800">Got some free time?</span>
         </span>
@@ -252,7 +252,7 @@ Views.dashboard = async (el) => {
         start_datetime: rec.suggested_start, end_datetime: rec.suggested_end,
         intensity: rec.intensity, title: `${rec.course_code}: study for ${rec.deadline_title}`,
       });
-      toast('Session added to your schedule. 🗓️');
+      toast('Session added to your schedule.');
       Views.dashboard(el);
     } catch (err) { if (!err.premium) toast(err.message, 'error'); }
   };
@@ -291,9 +291,9 @@ function renderOfflineDashboard(el) {
   el.innerHTML = `
     <div class="max-w-2xl mx-auto space-y-4">
       <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-sm text-amber-900">
-        📡 <strong>Offline mode.</strong> Showing your saved study plan. Changes sync when you reconnect.
+        <strong>Offline mode.</strong> Showing your saved study plan. Changes sync when you reconnect.
       </div>
-      ${!plan ? emptyState('📡', 'No saved plan yet', 'Open Home once while online and it will be available offline.') : `
+      ${!plan ? emptyState('offline', 'No saved plan yet', 'Open Home once while online and it will be available offline.') : `
         <section class="card p-5">
           <h3 class="font-bold text-slate-900 mb-1">Today's sessions</h3>
           <p class="text-xs text-slate-400 mb-3">Saved ${fmtDT(plan.saved_at.slice(0, 16))}</p>
@@ -320,12 +320,12 @@ function renderOfflineDashboard(el) {
             ${plan.roadmaps.map(r => `
               <div class="py-2.5 border-b border-slate-50 last:border-0">
                 <div class="flex items-center justify-between text-sm gap-2">
-                  <span class="font-medium text-slate-800 truncate">🗺️ ${esc(r.title)}</span>
+                  <span class="font-medium text-slate-800 truncate">${esc(r.title)}</span>
                   <span class="font-semibold text-slate-600 shrink-0">${r.progress}%</span>
                 </div>
                 ${r.next_topic ? `<div class="text-xs text-slate-400 mt-0.5 truncate">Next: ${esc(r.next_topic)}</div>` : ''}
               </div>`).join('')}
           </section>` : ''}
-        <p class="text-xs text-slate-400 text-center">🎯 Focus mode works offline — sessions sync automatically.</p>`}
+        <p class="text-xs text-slate-400 text-center">Focus mode works offline — sessions sync automatically.</p>`}
     </div>`;
 }

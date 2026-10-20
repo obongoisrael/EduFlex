@@ -8,9 +8,9 @@ Views.progress = async (el) => {
   ]);
   const maxDaily = Math.max(1, ...p.daily.map(d => d.hours));
 
-  const card = (icon, value, label, color) => `
+  const card = (ic, value, label, color) => `
     <div class="card p-4">
-      <div class="text-lg">${icon}</div>
+      <div class="[&_svg]:w-5 [&_svg]:h-5 ${color}">${icon(ic)}</div>
       <div class="text-xl sm:text-2xl font-extrabold ${color} mt-1.5">${value}</div>
       <div class="text-[11px] text-slate-400">${label}</div>
     </div>`;
@@ -22,28 +22,28 @@ Views.progress = async (el) => {
         <span class="flex-1 min-w-0"><span class="flex items-center gap-2 font-semibold text-slate-800 text-sm">Weekly insights & risk by deadline ${proBadge()}</span></span>
       </a>` : `
     <div class="rounded-3xl p-5 sm:p-6 text-white bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-700 shadow-xl shadow-indigo-500/20">
-      <h3 class="font-bold">📊 Weekly progress insight</h3>
+      <h3 class="font-bold">Weekly progress insight</h3>
       <p class="text-indigo-100 text-sm mt-2 leading-relaxed">${esc(weekly.insight_text)}</p>
-      <p class="text-white text-sm mt-2 font-medium">💡 ${esc(weekly.suggestion)}</p>
+      <p class="text-white text-sm mt-2 font-medium">${esc(weekly.suggestion)}</p>
       <div class="flex flex-wrap gap-2 mt-4 text-xs">
-        <span class="bg-white/15 rounded-lg px-3 py-1.5">🔥 ${weekly.streak}-day streak</span>
-        ${weekly.best_day ? `<span class="bg-white/15 rounded-lg px-3 py-1.5">⭐ Best: ${esc(weekly.best_day)}</span>` : ''}
-        ${weekly.most_studied ? `<span class="bg-white/15 rounded-lg px-3 py-1.5">📘 ${esc(weekly.most_studied.code)} (${weekly.most_studied.hours}h)</span>` : ''}
-        <span class="bg-white/15 rounded-lg px-3 py-1.5">🎯 ${weekly.focus_minutes} focus min</span>
+        <span class="bg-white/15 rounded-lg px-3 py-1.5">${weekly.streak}-day streak</span>
+        ${weekly.best_day ? `<span class="bg-white/15 rounded-lg px-3 py-1.5">Best: ${esc(weekly.best_day)}</span>` : ''}
+        ${weekly.most_studied ? `<span class="bg-white/15 rounded-lg px-3 py-1.5">${esc(weekly.most_studied.code)} (${weekly.most_studied.hours}h)</span>` : ''}
+        <span class="bg-white/15 rounded-lg px-3 py-1.5">${weekly.focus_minutes} focus min</span>
       </div>
     </div>`}
 
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
-      ${card('✅', p.totals.Completed, 'Completed', 'text-emerald-600')}
-      ${card('📅', p.totals.Planned + p.totals.Rescheduled, 'Planned', 'text-indigo-600')}
-      ${card('❌', p.totals.Missed, 'Missed', 'text-rose-600')}
-      ${card('⏱️', `${p.weekly_hours}h`, 'This week', 'text-violet-600')}
+      ${card('check', p.totals.Completed, 'Completed', 'text-emerald-600')}
+      ${card('calendar', p.totals.Planned + p.totals.Rescheduled, 'Planned', 'text-indigo-600')}
+      ${card('xcircle', p.totals.Missed, 'Missed', 'text-rose-600')}
+      ${card('timer', `${p.weekly_hours}h`, 'This week', 'text-violet-600')}
     </div>
 
     ${weekly && (risks.length || weekly.needs_attention.length) ? `
       <div class="grid lg:grid-cols-2 gap-4 mt-4">
         <section class="card p-5">
-          <h3 class="font-bold text-slate-900 text-sm sm:text-base mb-3">⚠️ Risk by deadline</h3>
+          <h3 class="font-bold text-slate-900 text-sm sm:text-base mb-3">Risk by deadline</h3>
           ${risks.length === 0 ? '<p class="text-sm text-slate-400 py-3">No pending deadlines.</p>'
             : risks.map(r => `
               <div class="flex items-center justify-between gap-3 py-2.5 border-b border-slate-50 last:border-0">
@@ -56,8 +56,8 @@ Views.progress = async (el) => {
           <a href="#/insights" class="inline-block mt-3 text-xs font-semibold text-indigo-600">Full analysis →</a>
         </section>
         <section class="card p-5">
-          <h3 class="font-bold text-slate-900 text-sm sm:text-base mb-3">📌 Needs attention</h3>
-          ${weekly.needs_attention.length === 0 ? '<p class="text-sm text-slate-400 py-3">All courses on track. 🎉</p>'
+          <h3 class="font-bold text-slate-900 text-sm sm:text-base mb-3">Needs attention</h3>
+          ${weekly.needs_attention.length === 0 ? '<p class="text-sm text-slate-400 py-3">All courses on track.</p>'
             : weekly.needs_attention.map(c => `
               <div class="flex items-center justify-between gap-3 py-2.5 border-b border-slate-50 last:border-0">
                 <span class="text-sm font-medium text-slate-800 truncate">${esc(c.code)} — ${esc(c.title)}</span>
@@ -82,7 +82,7 @@ Views.progress = async (el) => {
           </div>
           <div class="text-sm text-slate-500 space-y-1.5 min-w-0">
             <p><strong class="text-slate-800">${p.totals.Completed}</strong> of <strong class="text-slate-800">${p.total_sessions}</strong> sessions completed.</p>
-            <p>🎯 ${p.focus_minutes_total} focus minutes total.</p>
+            <p>${p.focus_minutes_total} focus minutes total.</p>
           </div>
         </div>
       </section>

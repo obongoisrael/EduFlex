@@ -17,7 +17,7 @@ const RM_BADGE = {
   'Completed': 'bg-emerald-100 text-emerald-700', 'Paused': 'bg-amber-100 text-amber-700',
   'Skipped': 'bg-slate-100 text-slate-400',
 };
-const TASK_ICON = { Practice: '✏️', 'Mini-project': '🛠️', Checkpoint: '🎓', Reading: '📖' };
+const TASK_ICON = { Practice: 'edit', 'Mini-project': 'layers', Checkpoint: 'check', Reading: 'courses' };
 
 /* ================= LIST ================= */
 async function roadmapList(el) {
@@ -32,7 +32,7 @@ async function roadmapList(el) {
       <a href="#/roadmaps/new" class="btn btn-primary btn-sm shrink-0">+ New Roadmap</a>
     </div>
     ${roadmaps.length === 0
-      ? emptyState('🗺️', 'No roadmaps yet', 'Tell EduFlex what you want to learn and it builds a structured path for you.',
+      ? emptyState('roadmaps', 'No roadmaps yet', 'Tell EduFlex what you want to learn and it builds a structured path for you.',
           `<a href="#/roadmaps/new" class="btn btn-primary inline-flex">Create your first roadmap</a>`)
       : `<div class="grid sm:grid-cols-2 gap-3 sm:gap-4">
           ${roadmaps.map(r => `
@@ -43,16 +43,16 @@ async function roadmapList(el) {
               </div>
               <div class="text-xs text-slate-400 mt-1 truncate">${esc(r.course_name)}${r.course_code ? ` (${esc(r.course_code)})` : ''} · ${esc(r.current_level)}</div>
               <div class="flex justify-between text-xs mt-3 mb-1.5">
-                <span class="text-slate-500 truncate">📍 ${esc(r.current_stage)}</span>
+                <span class="text-slate-500 truncate">${esc(r.current_stage)}</span>
                 <span class="font-bold text-slate-700 shrink-0 ml-2">${r.progress_percentage}%</span>
               </div>
               ${progressBar(r.progress_percentage)}
               <div class="flex flex-wrap items-center gap-2 mt-3 text-[11px] text-slate-400">
-                ${r.next_topic ? `<span class="truncate">➡️ ${esc(r.next_topic)}</span>` : '<span>🎉 All done</span>'}
+                ${r.next_topic ? `<span class="truncate">${esc(r.next_topic)}</span>` : '<span>All done</span>'}
               </div>
               <div class="flex flex-wrap gap-2 mt-2 text-[11px]">
-                ${r.deadline_date ? `<span class="text-slate-400">⏰ ${fmtDate(r.deadline_date)}</span>` : `<span class="text-slate-400">📅 ${r.duration_days} days</span>`}
-                ${r.behind_schedule ? badge('⚠ Behind', 'bg-amber-100 text-amber-700') : ''}
+                ${r.deadline_date ? `<span class="text-slate-400">${fmtDate(r.deadline_date)}</span>` : `<span class="text-slate-400">${r.duration_days} days</span>`}
+                ${r.behind_schedule ? badge('Behind', 'bg-amber-100 text-amber-700') : ''}
               </div>
             </a>`).join('')}
         </div>`}`;
@@ -68,12 +68,12 @@ async function roadmapNew(el) {
     <div class="max-w-3xl mx-auto">
       <a href="#/roadmaps" class="text-xs font-semibold text-slate-400 hover:text-slate-600">← Back to roadmaps</a>
       <div class="card p-5 sm:p-6 mt-3">
-        <h2 class="font-bold text-slate-900 text-lg">Create a learning roadmap 🗺️</h2>
+        <h2 class="font-bold text-slate-900 text-lg">Create a learning roadmap</h2>
         <p class="text-xs text-slate-500 mt-1 mb-5 leading-relaxed">Expert templates for common subjects, custom paths for anything else.</p>
         <div class="grid sm:grid-cols-2 gap-4">
-          ${field('Course / unit / topic *', `<input class="inp" id="rf_name" placeholder="e.g. Database Systems" list="courseList">
+          ${field('Course / unit / topic *', `<input class="inp" id="rf_name" list="courseList">
             <datalist id="courseList">${courses.map(c => `<option value="${esc(c.title)}">`).join('')}</datalist>`)}
-          ${field('Course code', `<input class="inp" id="rf_code" placeholder="e.g. CSC 224">`)}
+          ${field('Course code', `<input class="inp" id="rf_code">`)}
           ${field('Link existing course', `<select class="inp" id="rf_course"><option value="">— Auto-create —</option>
             ${courses.map(c => `<option value="${c.id}">${esc(c.code)} — ${esc(c.title)}</option>`).join('')}</select>`)}
           ${field('Connect to deadline', `<select class="inp" id="rf_deadline"><option value="">— None —</option>
@@ -85,8 +85,8 @@ async function roadmapNew(el) {
           ${field('Deadline date', `<input type="date" class="inp" id="rf_date">`)}
           ${field('Preferred resource type', `<select class="inp" id="rf_restype">${CATS.map(c => `<option>${c}</option>`).join('')}</select>`)}
         </div>
-        <div class="mt-4">${field('Target goal', `<textarea class="inp" id="rf_goal" rows="2" placeholder="e.g. Score an A in the end-of-semester exam"></textarea>`)}</div>
-        <button id="rf_generate" class="btn btn-primary btn-block mt-5">✨ Generate my roadmap</button>
+        <div class="mt-4">${field('Target goal', `<textarea class="inp" id="rf_goal" rows="2"></textarea>`)}</div>
+        <button id="rf_generate" class="btn btn-primary btn-block mt-5">Generate my roadmap</button>
         <p id="rf_ai" class="text-[11px] text-slate-400 text-center mt-2"></p>
       </div>
       <div id="previewArea" class="mt-5"></div>
@@ -118,7 +118,7 @@ async function roadmapNew(el) {
     const form = readForm();
     if (!form.course_name) return toast('Enter the course, unit or topic name.', 'error');
     const btn = document.getElementById('rf_generate');
-    btn.disabled = true; btn.textContent = aiRoadmapReady(aiStatus) ? '✨ Building with AI… (up to a minute)' : 'Generating…';
+    btn.disabled = true; btn.textContent = aiRoadmapReady(aiStatus) ? 'Building with AI… (up to a minute)' : 'Generating…';
     try {
       const r = await API.post('/api/roadmaps/preview', form);
       structure = r.structure;
@@ -127,7 +127,7 @@ async function roadmapNew(el) {
       if (r.ai) { aiStatus = { configured: aiStatus ? aiStatus.configured : true, ...r.ai }; document.getElementById('rf_ai').textContent = aiRoadmapNote(aiStatus); }
       document.getElementById('previewArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (err) { toast(err.message, 'error'); }
-    btn.disabled = false; btn.textContent = '✨ Generate my roadmap';
+    btn.disabled = false; btn.textContent = 'Generate my roadmap';
   };
 
   function renderPreview() {
@@ -137,9 +137,8 @@ async function roadmapNew(el) {
       <div class="card p-5 sm:p-6 border-indigo-200">
         <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
           <h3 class="font-bold text-slate-900">Preview — edit before saving</h3>
-          <span class="text-[11px] text-slate-400">${badge(ROADMAP_SOURCE_BADGE[structure.source] || '🗺️ Custom', 'bg-indigo-50 text-indigo-700')} ~${Math.round(totalH)}h</span>
+          <span class="text-[11px] text-slate-400">${badge(ROADMAP_SOURCE_BADGE[structure.source] || 'Custom', 'bg-indigo-50 text-indigo-700')} ~${Math.round(totalH)}h</span>
         </div>
-        <p class="text-xs text-slate-400 mb-4">Rename anything, adjust hours, remove topics you know, or add your own.</p>
         ${structure.stages.map((st, si) => `
           <div class="border border-slate-200 rounded-2xl p-4 mb-3">
             <div class="flex items-center gap-2">
@@ -160,12 +159,12 @@ async function roadmapNew(el) {
         <button id="pv_addstage" class="text-xs font-semibold text-indigo-600">+ Add stage</button>
         ${structure.tools.length ? `
           <div class="mt-4 pt-4 border-t border-slate-100">
-            <div class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">🧰 Tools</div>
+            <div class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Tools</div>
             <div class="flex flex-wrap gap-2">
               ${structure.tools.map(t => `<span class="text-xs bg-slate-100 text-slate-600 rounded-lg px-3 py-1.5" title="${esc(t.purpose)}">${esc(t.name)}</span>`).join('')}
             </div>
           </div>` : ''}
-        <button id="pv_save" class="btn btn-success btn-block mt-6">💾 Save roadmap</button>
+        <button id="pv_save" class="btn btn-success btn-block mt-6">Save roadmap</button>
       </div>`;
 
     area.querySelectorAll('[data-stage]').forEach(i => i.oninput = () => { structure.stages[Number(i.dataset.stage)].title = i.value; });
@@ -191,9 +190,9 @@ async function roadmapNew(el) {
       btn.disabled = true; btn.textContent = 'Saving…';
       try {
         const r = await API.post('/api/roadmaps', { ...readForm(), structure });
-        toast('Roadmap saved! 🗺️');
+        toast('Roadmap saved!');
         location.hash = `#/roadmaps/${r.id}`;
-      } catch (err) { toast(err.message, 'error'); btn.disabled = false; btn.textContent = '💾 Save roadmap'; }
+      } catch (err) { toast(err.message, 'error'); btn.disabled = false; btn.textContent = 'Save roadmap'; }
     };
   }
 }
@@ -203,7 +202,7 @@ async function roadmapDetail(el, id) {
   let data;
   try { data = await API.get(`/api/roadmaps/${id}`); }
   catch (err) {
-    el.innerHTML = emptyState('🗺️', 'Roadmap not found', err.message,
+    el.innerHTML = emptyState('roadmaps', 'Roadmap not found', err.message,
       '<a href="#/roadmaps" class="btn btn-ghost inline-flex">← Back to roadmaps</a>');
     return;
   }
@@ -222,8 +221,8 @@ async function roadmapDetail(el, id) {
             ${badge(rm.preferred_learning_style, 'bg-violet-50 text-violet-700')}
             ${badge(rm.difficulty, DIFFICULTY_BADGE[rm.difficulty])}
           </div>
-          ${rm.goal ? `<p class="text-sm text-slate-500 mt-3">🎯 ${esc(rm.goal)}</p>` : ''}
-          <p class="text-xs text-slate-400 mt-2">📅 ${rm.duration_days} days${rm.deadline_date ? ` · deadline ${fmtDate(rm.deadline_date)}` : ''}</p>
+          ${rm.goal ? `<p class="text-sm text-slate-500 mt-3">${esc(rm.goal)}</p>` : ''}
+          <p class="text-xs text-slate-400 mt-2">${rm.duration_days} days${rm.deadline_date ? ` · deadline ${fmtDate(rm.deadline_date)}` : ''}</p>
         </div>
         <select id="rmStatus" class="inp !w-auto !min-h-0 !py-2 text-xs font-semibold shrink-0">
           ${['Not Started', 'In Progress', 'Completed', 'Paused'].map(s => `<option ${rm.status === s ? 'selected' : ''}>${s}</option>`).join('')}
@@ -237,13 +236,13 @@ async function roadmapDetail(el, id) {
 
       ${rm.behind_schedule ? `
         <div class="mt-4 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 text-sm text-amber-800">
-          ⚠️ <strong>Behind schedule.</strong> Progress is lower than expected — schedule extra sessions to catch up.
+          <strong>Behind schedule.</strong> Progress is lower than expected — schedule extra sessions to catch up.
         </div>` : ''}
 
       <div class="flex flex-col sm:flex-row flex-wrap gap-2 mt-5">
-        <button id="rmSchedule" class="btn btn-primary flex-1 sm:flex-none">⚡ Generate Schedule from Roadmap</button>
-        <a href="#/roadmaps/${rm.id}/edit" class="btn btn-ghost">✏️ Edit</a>
-        <button id="rmDelete" class="btn border border-rose-200 text-rose-600 bg-white">🗑 Delete</button>
+        <button id="rmSchedule" class="btn btn-primary flex-1 sm:flex-none">Generate Schedule from Roadmap</button>
+        <a href="#/roadmaps/${rm.id}/edit" class="btn btn-ghost">Edit</a>
+        <button id="rmDelete" class="btn border border-rose-200 text-rose-600 bg-white">Delete</button>
       </div>
       <div id="schedResult" class="hidden mt-3 text-sm rounded-2xl px-4 py-3"></div>
     </div>
@@ -251,16 +250,16 @@ async function roadmapDetail(el, id) {
     ${next_topic ? `
       <div class="card p-5 mt-4 border-indigo-200">
         <div class="text-xs font-bold text-indigo-600 uppercase tracking-wide">Recommended next</div>
-        <div class="text-sm font-semibold text-slate-800 mt-1">➡️ ${esc(next_topic.title)}</div>
+        <div class="text-sm font-semibold text-slate-800 mt-1">${esc(next_topic.title)}</div>
         <div class="flex flex-col sm:flex-row gap-2 mt-3">
-          <button data-schedule-topic="${next_topic.id}" class="btn btn-primary btn-sm flex-1">🗓 Schedule this topic</button>
-          <button data-focus-topic="${esc(next_topic.title)}" class="btn btn-sm bg-violet-600 text-white flex-1">🎯 Start focus session</button>
+          <button data-schedule-topic="${next_topic.id}" class="btn btn-primary btn-sm flex-1">Schedule this topic</button>
+          <button data-focus-topic="${esc(next_topic.title)}" class="btn btn-sm bg-violet-600 text-white flex-1">Start focus session</button>
         </div>
       </div>` : ''}
 
     ${tools.length ? `
       <div class="card p-5 mt-4">
-        <h3 class="font-bold text-slate-900 text-sm mb-3">🧰 Tools &amp; technologies</h3>
+        <h3 class="font-bold text-slate-900 text-sm mb-3">Tools &amp; technologies</h3>
         <div class="flex flex-wrap gap-2">
           ${tools.map(t => `<span class="text-xs bg-slate-100 text-slate-600 rounded-lg px-3 py-1.5" title="${esc(t.purpose)}">${esc(t.name)}${t.is_required ? '' : ' (optional)'}</span>`).join('')}
         </div>
@@ -285,11 +284,11 @@ async function roadmapDetail(el, id) {
                     ${t.status === 'Completed' ? 'bg-emerald-500 border-emerald-500 text-white' : t.status === 'Skipped' ? 'bg-slate-200 border-slate-200 text-slate-400' : 'border-slate-300 text-transparent'}">✓</button>
                   <div class="flex-1 min-w-0">
                     <div class="text-sm font-medium ${t.status === 'Completed' || t.status === 'Skipped' ? 'text-slate-400 line-through' : 'text-slate-800'}">${esc(t.title)}</div>
-                    <div class="text-[11px] text-slate-400 mt-0.5">${t.estimated_hours}h${t.session_count ? ` · 🗓 ${t.session_count}` : ''}</div>
+                    <div class="text-[11px] text-slate-400 mt-0.5">${t.estimated_hours}h${t.session_count ? ` · ${t.session_count}` : ''}</div>
                   </div>
                   <div class="flex gap-0.5 shrink-0">
-                    <button data-schedule-topic="${t.id}" title="Schedule" class="p-2 rounded-lg hover:bg-indigo-50 text-indigo-600">🗓</button>
-                    <button data-focus-topic="${esc(t.title)}" title="Focus" class="p-2 rounded-lg hover:bg-violet-50 text-violet-600">🎯</button>
+                    <button data-schedule-topic="${t.id}" title="Schedule" aria-label="Schedule" class="p-2 rounded-lg hover:bg-indigo-50 text-indigo-600 [&_svg]:w-4 [&_svg]:h-4">${icon('schedule')}</button>
+                    <button data-focus-topic="${esc(t.title)}" title="Focus" aria-label="Focus" class="p-2 rounded-lg hover:bg-violet-50 text-violet-600 [&_svg]:w-4 [&_svg]:h-4">${icon('focus')}</button>
                     <button data-skip-topic="${t.id}" title="Skip" class="p-2 rounded-lg hover:bg-slate-100 text-slate-400">⤼</button>
                   </div>
                 </div>
@@ -297,7 +296,7 @@ async function roadmapDetail(el, id) {
                   ${t.tasks.map(task => `
                     <label class="flex items-start gap-2 text-xs ${task.status === 'Completed' ? 'text-slate-300 line-through' : 'text-slate-500'} cursor-pointer">
                       <input type="checkbox" data-task="${task.id}" ${task.status === 'Completed' ? 'checked' : ''} class="w-4 h-4 mt-0.5 rounded border-slate-300 text-emerald-600 shrink-0">
-                      <span>${TASK_ICON[task.task_type] || '✏️'} ${esc(task.title)} <span class="text-slate-300">· ${task.estimated_minutes}m</span></span>
+                      <span><span class="inline-block align-[-2px] mr-1 text-slate-400 [&_svg]:w-3.5 [&_svg]:h-3.5">${icon(TASK_ICON[task.task_type] || 'edit')}</span>${esc(task.title)} <span class="text-slate-300">· ${task.estimated_minutes}m</span></span>
                     </label>`).join('')}
                 </div>` : ''}
               </div>`).join('')}
@@ -306,7 +305,7 @@ async function roadmapDetail(el, id) {
     </div>
 
     <div class="card p-5 mt-2">
-      <h3 class="font-bold text-slate-900 text-sm mb-3">📚 Recommended resources</h3>
+      <h3 class="font-bold text-slate-900 text-sm mb-3">Recommended resources</h3>
       ${resources.length === 0
         ? '<p class="text-sm text-slate-400">No matching resources yet — check the <a href="#/resources" class="text-indigo-600">library</a>.</p>'
         : `<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -315,8 +314,8 @@ async function roadmapDetail(el, id) {
                 <div class="text-sm font-semibold text-slate-800 leading-snug line-clamp-2">${esc(r.resource_title)}</div>
                 <div class="mt-1.5">${qualityBadge(r.quality_score, r.quality_score >= 80 ? 'Highly Recommended' : r.quality_score >= 60 ? 'Good Resource' : r.quality_score >= 40 ? 'Average' : 'Low Confidence')}</div>
                 ${r.resource_id ? `<div class="flex gap-2 mt-3">
-                  <a href="/api/resources/${r.resource_id}/view" target="_blank" rel="noopener" class="btn btn-ghost btn-sm flex-1">👁 View</a>
-                  <a href="/api/resources/${r.resource_id}/download" download class="btn btn-ghost btn-sm flex-1">⬇</a>
+                  <a href="/api/resources/${r.resource_id}/view" target="_blank" rel="noopener" class="btn btn-ghost btn-sm flex-1">View</a>
+                  <a href="/api/resources/${r.resource_id}/download" download class="btn btn-ghost btn-sm flex-1 [&_svg]:w-4 [&_svg]:h-4" title="Download" aria-label="Download">${icon('download')}</a>
                 </div>` : ''}
               </div>`).join('')}
           </div>`}
@@ -343,16 +342,16 @@ async function roadmapDetail(el, id) {
       box.innerHTML = r.messages.map(m => `<div>• ${esc(m)}</div>`).join('') +
         (r.created > 0 ? '<div class="mt-1"><a href="#/calendar" class="font-semibold underline">Open calendar →</a></div>' : '');
       box.classList.remove('hidden');
-      if (r.created > 0) toast(`${r.created} session${r.created === 1 ? '' : 's'} added. 🗓️`);
+      if (r.created > 0) toast(`${r.created} session${r.created === 1 ? '' : 's'} added.`);
     } catch (err) { toast(err.message, 'error'); }
-    btn.disabled = false; btn.textContent = '⚡ Generate Schedule from Roadmap';
+    btn.disabled = false; btn.textContent = 'Generate Schedule from Roadmap';
   };
 
   el.querySelectorAll('[data-toggle-topic]').forEach(b => b.onclick = async () => {
     const newStatus = b.dataset.cur === 'Completed' ? 'Not Started' : 'Completed';
     try {
       await API.patch(`/api/roadmaps/topics/${b.dataset.toggleTopic}`, { status: newStatus });
-      toast(newStatus === 'Completed' ? 'Topic completed! 🎉' : 'Topic reopened.', 'info');
+      toast(newStatus === 'Completed' ? 'Topic completed!' : 'Topic reopened.', 'info');
       reload();
     } catch (err) { toast(err.message, 'error'); }
   });
@@ -368,7 +367,7 @@ async function roadmapDetail(el, id) {
   el.querySelectorAll('[data-schedule-topic]').forEach(b => b.onclick = async () => {
     try {
       const r = await API.post(`/api/roadmaps/${id}/schedule`, { topic_id: Number(b.dataset.scheduleTopic) });
-      toast(r.created > 0 ? `${r.created} session${r.created === 1 ? '' : 's'} scheduled. 🗓️` : (r.messages[0] || 'Nothing to schedule.'), r.created > 0 ? 'success' : 'info');
+      toast(r.created > 0 ? `${r.created} session${r.created === 1 ? '' : 's'} scheduled.` : (r.messages[0] || 'Nothing to schedule.'), r.created > 0 ? 'success' : 'info');
       reload();
     } catch (err) { toast(err.message, 'error'); }
   });
@@ -382,7 +381,7 @@ async function roadmapDetail(el, id) {
 async function roadmapEdit(el, id) {
   let data;
   try { data = await API.get(`/api/roadmaps/${id}`); }
-  catch (err) { el.innerHTML = emptyState('🗺️', 'Roadmap not found', err.message); return; }
+  catch (err) { el.innerHTML = emptyState('roadmaps', 'Roadmap not found', err.message); return; }
   const { roadmap: rm, stages } = data;
 
   el.innerHTML = `
@@ -405,7 +404,6 @@ async function roadmapEdit(el, id) {
 
       <div class="card p-5 sm:p-6 mt-4">
         <h3 class="font-bold text-slate-900 mb-1">Stages &amp; topics</h3>
-        <p class="text-xs text-slate-400 mb-4">Edits save when you tap away from a field.</p>
         ${stages.map(st => `
           <div class="border border-slate-200 rounded-2xl p-4 mb-3">
             <div class="flex items-center justify-between gap-2 mb-2">
@@ -420,13 +418,13 @@ async function roadmapEdit(el, id) {
                   <button data-rmtopic="${t.id}" class="text-rose-400 hover:text-rose-600 px-1 shrink-0">✕</button>
                 </div>`).join('')}
               <div class="flex gap-2 mt-2">
-                <input data-newtopic="${st.id}" class="flex-1 min-w-0 text-sm bg-white rounded-xl px-3 py-2 border border-dashed border-slate-300 focus:border-indigo-400 focus:outline-none" placeholder="New topic title…">
+                <input data-newtopic="${st.id}" class="flex-1 min-w-0 text-sm bg-white rounded-xl px-3 py-2 border border-dashed border-slate-300 focus:border-indigo-400 focus:outline-none" placeholder="New topic">
                 <button data-addtopic="${st.id}" class="btn btn-soft btn-sm shrink-0">+ Add</button>
               </div>
             </div>
           </div>`).join('')}
         <div class="flex gap-2 mt-3">
-          <input id="re_newstage" class="flex-1 min-w-0 text-sm bg-white rounded-xl px-3 py-2 border border-dashed border-slate-300 focus:border-indigo-400 focus:outline-none" placeholder="New stage title…">
+          <input id="re_newstage" class="flex-1 min-w-0 text-sm bg-white rounded-xl px-3 py-2 border border-dashed border-slate-300 focus:border-indigo-400 focus:outline-none" placeholder="New stage">
           <button id="re_addstage" class="btn btn-soft btn-sm shrink-0">+ Add stage</button>
         </div>
       </div>

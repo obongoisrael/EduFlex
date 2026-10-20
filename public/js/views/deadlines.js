@@ -14,7 +14,7 @@ Views.deadlines = async (el) => {
       <button id="addBtn" class="btn btn-primary btn-sm">+ Add Deadline</button>
     </div>
     ${deadlines.length === 0
-      ? emptyState('⏰', 'No deadlines yet', 'Add assignments, CATs, exams and projects so EduFlex can plan your studying.',
+      ? emptyState('deadlines', 'No deadlines yet', 'Add assignments, CATs, exams and projects so EduFlex can plan your studying.',
           `<button onclick="document.getElementById('addBtn').click()" class="btn btn-primary">Add your first deadline</button>`)
       : `
       <!-- Mobile cards -->
@@ -24,7 +24,7 @@ Views.deadlines = async (el) => {
           return `<div class="card p-4">
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0">
-                <div class="font-semibold text-slate-800 text-sm leading-snug">${d.reminder_enabled ? '🔔 ' : ''}${esc(d.title)}</div>
+                <div class="font-semibold text-slate-800 text-sm leading-snug">${d.reminder_enabled ? '' : ''}${esc(d.title)}</div>
                 <div class="text-xs text-slate-400 mt-1">${esc(d.course_code)} · ${esc(d.type)} · ${d.estimated_hours}h</div>
               </div>
               ${badge(d.status, statusCls(d.status))}
@@ -38,7 +38,7 @@ Views.deadlines = async (el) => {
                 ${badge(d.priority, PRIORITY_BADGE[d.priority])}
                 ${d.status === 'Pending' ? `<button data-done="${d.id}" class="btn btn-sm !px-2.5 bg-emerald-50 text-emerald-700">✓</button>` : ''}
                 <button data-edit="${d.id}" class="btn btn-ghost btn-sm !px-2.5">✎</button>
-                <button data-del="${d.id}" class="btn btn-sm !px-2.5 bg-rose-50 text-rose-600">🗑</button>
+                <button data-del="${d.id}" class="btn btn-sm !px-2.5 bg-rose-50 text-rose-600 [&_svg]:w-4 [&_svg]:h-4" title="Delete" aria-label="Delete">${icon('trash')}</button>
               </div>
             </div>
           </div>`;
@@ -58,7 +58,7 @@ Views.deadlines = async (el) => {
             ${deadlines.map(d => {
               const due = dueLabel(d.due_date);
               return `<tr class="border-b border-slate-50 last:border-0 hover:bg-slate-50/60">
-                <td class="px-5 py-3.5 font-medium text-slate-800">${d.reminder_enabled ? '🔔 ' : ''}${esc(d.title)}</td>
+                <td class="px-5 py-3.5 font-medium text-slate-800">${d.reminder_enabled ? '' : ''}${esc(d.title)}</td>
                 <td class="px-3 py-3.5 text-slate-500">${esc(d.course_code)}</td>
                 <td class="px-3 py-3.5 text-slate-500">${esc(d.type)}</td>
                 <td class="px-3 py-3.5"><div class="text-slate-700">${fmtDT(d.due_date)}</div>
@@ -69,7 +69,7 @@ Views.deadlines = async (el) => {
                 <td class="px-3 py-3.5 text-right whitespace-nowrap">
                   ${d.status === 'Pending' ? `<button data-done="${d.id}" title="Complete" class="text-emerald-600 hover:bg-emerald-50 rounded-lg p-2">✓</button>` : ''}
                   <button data-edit="${d.id}" title="Edit" class="text-slate-400 hover:bg-slate-100 rounded-lg p-2">✎</button>
-                  <button data-del="${d.id}" title="Delete" class="text-rose-500 hover:bg-rose-50 rounded-lg p-2">🗑</button>
+                  <button data-del="${d.id}" title="Delete" aria-label="Delete" class="text-rose-500 hover:bg-rose-50 rounded-lg p-2 [&_svg]:w-4 [&_svg]:h-4">${icon('trash')}</button>
                 </td></tr>`;
             }).join('')}
           </tbody>
@@ -83,7 +83,7 @@ Views.deadlines = async (el) => {
         ${field('Course', `<select class="inp" id="df_course">
           ${courses.map(c => `<option value="${c.id}" ${dl?.course_id === c.id ? 'selected' : ''}>${esc(c.code)} — ${esc(c.title)}</option>`).join('')}
         </select>`)}
-        ${field('Deadline title', `<input class="inp" id="df_title" required value="${esc(dl?.title || '')}" placeholder="e.g. SQL Practical CAT">`)}
+        ${field('Deadline title', `<input class="inp" id="df_title" required value="${esc(dl?.title || '')}">`)}
         <div class="grid grid-cols-2 gap-3">
           ${field('Type', `<select class="inp" id="df_type">${TYPES.map(t => `<option ${dl?.type === t ? 'selected' : ''}>${t}</option>`).join('')}</select>`)}
           ${field('Priority', `<select class="inp" id="df_prio">${['Low', 'Medium', 'High'].map(p => `<option ${(dl?.priority || 'Medium') === p ? 'selected' : ''}>${p}</option>`).join('')}</select>`)}
@@ -95,7 +95,7 @@ Views.deadlines = async (el) => {
         ${dl ? field('Status', `<select class="inp" id="df_status">${['Pending', 'Completed', 'Missed'].map(s => `<option ${dl.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select>`) : ''}
         <div class="border border-slate-200 rounded-2xl px-4 py-3">
           <label class="flex items-center justify-between text-sm font-medium text-slate-700 cursor-pointer">
-            <span>🔔 Remind me</span>
+            <span>Remind me</span>
             <input type="checkbox" id="df_remind" ${dl?.reminder_enabled ? 'checked' : ''} class="w-5 h-5 rounded border-slate-300 text-indigo-600">
           </label>
           <select id="df_remind_when" class="inp mt-2.5 ${dl?.reminder_enabled ? '' : 'hidden'}">
@@ -150,7 +150,7 @@ Views.deadlines = async (el) => {
   el.querySelectorAll('[data-edit]').forEach(b =>
     b.onclick = () => showForm(deadlines.find(d => d.id === Number(b.dataset.edit))));
   el.querySelectorAll('[data-done]').forEach(b => b.onclick = async () => {
-    try { await API.put(`/api/deadlines/${b.dataset.done}`, { status: 'Completed' }); toast('Marked complete. 🎉'); Views.deadlines(el); }
+    try { await API.put(`/api/deadlines/${b.dataset.done}`, { status: 'Completed' }); toast('Marked complete.'); Views.deadlines(el); }
     catch (err) { toast(err.message, 'error'); }
   });
   el.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {

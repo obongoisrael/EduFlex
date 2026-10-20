@@ -34,7 +34,7 @@ Views.focus = async (el) => {
       <!-- Timer -->
       <div class="rounded-3xl p-6 sm:p-8 text-center text-white bg-gradient-to-br ${T.phase === 'study' ? 'from-indigo-600 to-violet-700' : 'from-emerald-600 to-teal-700'} shadow-xl shadow-indigo-500/20">
         <div id="phaseLabel" class="text-xs font-bold uppercase tracking-widest text-white/80">
-          ${T.phase === 'study' ? '📖 Study time' : '☕ Break time'}
+          ${T.phase === 'study' ? 'Study time' : 'Break time'}
         </div>
         <div id="timerDisplay" class="text-6xl sm:text-7xl font-extrabold tabular-nums my-6 leading-none">${fmtClock(T.remaining)}</div>
         <div class="h-2 bg-white/20 rounded-full overflow-hidden max-w-sm mx-auto">
@@ -49,7 +49,7 @@ Views.focus = async (el) => {
         <div class="card p-5">
           <h3 class="font-bold text-slate-900 mb-4">Session setup</h3>
           <div class="space-y-4">
-            ${field('Session title', `<input class="inp" id="fs_title" value="${esc(T.title)}" placeholder="e.g. Revise graph algorithms" ${T.focusId ? 'disabled' : ''}>`)}
+            ${field('Session title', `<input class="inp" id="fs_title" value="${esc(T.title)}" ${T.focusId ? 'disabled' : ''}>`)}
             ${field('Course (optional)', `<select class="inp" id="fs_course" ${T.focusId ? 'disabled' : ''}>
               <option value="">— No course —</option>
               ${courses.map(c => `<option value="${c.id}" ${T.courseId === c.id ? 'selected' : ''}>${esc(c.code)} — ${esc(c.title)}</option>`).join('')}
@@ -93,16 +93,16 @@ Views.focus = async (el) => {
     if (!c) return;
     const btn = (id, label, cls) => `<button id="${id}" class="btn ${cls}">${label}</button>`;
     if (!T.focusId) {
-      c.innerHTML = btn('startBtn', '▶ Start', 'bg-white text-indigo-700 hover:bg-indigo-50 px-8');
+      c.innerHTML = btn('startBtn', 'Start', 'bg-white text-indigo-700 hover:bg-indigo-50 px-8');
       document.getElementById('startBtn').onclick = start;
     } else if (T.running) {
-      c.innerHTML = btn('pauseBtn', '⏸ Pause', 'bg-white/20 text-white border-white/30') +
-                    btn('endBtn', '⏹ End', 'bg-white text-slate-800');
+      c.innerHTML = btn('pauseBtn', 'Pause', 'bg-white/20 text-white border-white/30') +
+                    btn('endBtn', 'End', 'bg-white text-slate-800');
       document.getElementById('pauseBtn').onclick = pause;
       document.getElementById('endBtn').onclick = end;
     } else {
-      c.innerHTML = btn('resumeBtn', '▶ Resume', 'bg-white text-indigo-700') +
-                    btn('endBtn', '⏹ End', 'bg-white/20 text-white border-white/30');
+      c.innerHTML = btn('resumeBtn', 'Resume', 'bg-white text-indigo-700') +
+                    btn('endBtn', 'End', 'bg-white/20 text-white border-white/30');
       document.getElementById('resumeBtn').onclick = resume;
       document.getElementById('endBtn').onclick = end;
     }
@@ -113,7 +113,7 @@ Views.focus = async (el) => {
     if (!disp) { clearInterval(T.interval); T.interval = null; return; }
     disp.textContent = fmtClock(T.remaining);
     document.getElementById('timerBar').style.width = `${barPct()}%`;
-    document.getElementById('phaseLabel').textContent = T.phase === 'study' ? '📖 Study time' : '☕ Break time';
+    document.getElementById('phaseLabel').textContent = T.phase === 'study' ? 'Study time' : 'Break time';
   }
 
   function tick() {
@@ -123,11 +123,11 @@ Views.focus = async (el) => {
     if (T.remaining <= 0) {
       if (T.phase === 'study') {
         T.phase = 'break'; T.remaining = T.breakMin * 60;
-        toast('Study block done — take a break! ☕', 'info');
+        toast('Study block done — take a break!', 'info');
         if (T.breakMin === 0) { T.phase = 'study'; T.remaining = T.studyMin * 60; }
       } else {
         T.phase = 'study'; T.remaining = T.studyMin * 60;
-        toast('Break over — back to studying! 📖', 'info');
+        toast('Break over — back to studying!', 'info');
       }
       Views.focus(el); return; // re-render to swap the gradient
     }
@@ -146,7 +146,7 @@ Views.focus = async (el) => {
       T.focusId = `offline-${Date.now()}`;
       T.phase = 'study'; T.remaining = T.studyMin * 60; T.elapsedStudySec = 0; T.running = true;
       if (!T.interval) T.interval = setInterval(tick, 1000);
-      toast('Offline session started — syncs when you reconnect. 📡', 'info');
+      toast('Offline session started — syncs when you reconnect.', 'info');
       Views.focus(el); return;
     }
     try {
@@ -157,7 +157,7 @@ Views.focus = async (el) => {
       T.focusId = r.id;
       T.phase = 'study'; T.remaining = T.studyMin * 60; T.elapsedStudySec = 0; T.running = true;
       if (!T.interval) T.interval = setInterval(tick, 1000);
-      toast('Focus session started. Good luck! 🎯');
+      toast('Focus session started. Good luck!');
       Views.focus(el);
     } catch (err) { toast(err.message, 'error'); }
   }
@@ -181,7 +181,7 @@ Views.focus = async (el) => {
       });
       localStorage.setItem('ef_focus_queue', JSON.stringify(queue));
       Object.assign(T, { focusId: null, phase: 'study', remaining: (T.studyMin || 25) * 60, elapsedStudySec: 0, studySessionId: null });
-      toast(`Saved offline — ${minutes} min will sync later. 📡`, 'info');
+      toast(`Saved offline — ${minutes} min will sync later.`, 'info');
       if (!App.offline) App.syncFocusQueue();
       Views.focus(el); return;
     }
@@ -193,7 +193,7 @@ Views.focus = async (el) => {
         });
         Object.assign(T, { focusId: null, phase: 'study', remaining: (T.studyMin || 25) * 60, elapsedStudySec: 0, studySessionId: null });
         closeModal();
-        toast(`Saved — ${minutes} study minute${minutes === 1 ? '' : 's'} logged. 💪`);
+        toast(`Saved — ${minutes} study minute${minutes === 1 ? '' : 's'} logged.`);
         Views.focus(el);
       } catch (err) { toast(err.message, 'error'); }
     };
@@ -227,7 +227,7 @@ Views.focus = async (el) => {
         localStorage.removeItem('ef_focus_prefill');
         document.getElementById('fs_title').value = pre.title || '';
         if (pre.course_id) document.getElementById('fs_course').value = String(pre.course_id);
-        toast('Prefilled from your roadmap topic — press Start. 🗺️', 'info');
+        toast('Prefilled from your roadmap topic — press Start.', 'info');
       }
     } catch { /* ignore */ }
   }

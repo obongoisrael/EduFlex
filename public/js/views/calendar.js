@@ -67,7 +67,7 @@ Views.calendar = async (el) => {
     return `<button data-session="${s.id}"
       class="w-full text-left ${CHIP[s.status]} text-white rounded-lg px-1.5 py-1 text-[10px] sm:text-[11px] leading-tight truncate active:opacity-80"
       title="${esc(s.title)} (${s.status})">
-      ${s.reminder_enabled ? '🔔' : ''}${s.start_datetime.slice(11)} ${esc(full ? s.title : (s.course_code || ''))}
+      ${s.reminder_enabled ? `<span class="inline-block align-[-2px] [&_svg]:w-3 [&_svg]:h-3">${icon('bell')}</span> ` : ''}${s.start_datetime.slice(11)} ${esc(full ? s.title : (s.course_code || ''))}
     </button>`;
   }
 
@@ -152,13 +152,13 @@ Views.calendar = async (el) => {
       const t = y(mins(s.start_datetime)), b = y(mins(s.end_datetime));
       return `<button data-session="${s.id}" class="absolute left-14 right-1 rounded-xl px-3 py-1.5 text-left text-white ${CHIP[s.status]} shadow-sm overflow-hidden active:opacity-90"
         style="top:${t}px;height:${Math.max(28, b - t - 2)}px">
-        <div class="text-xs font-semibold truncate">${s.reminder_enabled ? '🔔 ' : ''}${esc(s.title)}</div>
+        <div class="text-xs font-semibold truncate">${s.reminder_enabled ? '' : ''}${esc(s.title)}</div>
         <div class="text-[10px] opacity-80">${s.start_datetime.slice(11)} – ${s.end_datetime.slice(11)}</div>
       </button>`;
     }).join('');
     const markers = dls.map(dl => `
       <a href="#/deadlines" class="absolute left-14 right-1 rounded-lg px-3 py-1 bg-amber-50 text-amber-800 text-[11px] font-semibold border-l-4 border-amber-500 truncate"
-        style="top:${Math.max(0, y(mins(dl.due_date)) - 12)}px">⏰ ${esc(dl.type)} due: ${esc(dl.title)} · ${dl.due_date.slice(11)}</a>`).join('');
+        style="top:${Math.max(0, y(mins(dl.due_date)) - 12)}px">${esc(dl.type)} due: ${esc(dl.title)} · ${dl.due_date.slice(11)}</a>`).join('');
     const nowM = new Date().getHours() * 60 + new Date().getMinutes();
     const nowLine = dayKey === todayKey && nowM >= startH * 60 && nowM <= endH * 60 ? `
       <div class="absolute left-12 right-0 h-0.5 bg-indigo-500 pointer-events-none" style="top:${y(nowM)}px">
@@ -192,10 +192,10 @@ Views.calendar = async (el) => {
       <div class="space-y-2 text-sm">
         <div class="font-bold text-slate-900 text-base">${esc(s.title)}</div>
         <div class="flex flex-wrap items-center gap-2">${badge(s.status, STATUS_BADGE[s.status])} ${badge(s.study_intensity, 'bg-slate-100 text-slate-600')}</div>
-        <p class="text-slate-500">📘 ${esc(s.course_code)} — ${esc(s.course_title)}</p>
-        <p class="text-slate-500">🕒 ${fmtDT(s.start_datetime)} → ${s.end_datetime.slice(11)}</p>
-        ${s.deadline_title ? `<p class="text-slate-500">🎯 ${esc(s.deadline_title)}</p>` : ''}
-        ${s.roadmap_id ? `<p class="text-slate-500">🗺️ <a href="#/roadmaps/${s.roadmap_id}" onclick="closeModal()" class="text-indigo-600 font-medium">Open roadmap</a></p>` : ''}
+        <p class="text-slate-500">${esc(s.course_code)} — ${esc(s.course_title)}</p>
+        <p class="text-slate-500">${fmtDT(s.start_datetime)} → ${s.end_datetime.slice(11)}</p>
+        ${s.deadline_title ? `<p class="text-slate-500">${esc(s.deadline_title)}</p>` : ''}
+        ${s.roadmap_id ? `<p class="text-slate-500"><a href="#/roadmaps/${s.roadmap_id}" onclick="closeModal()" class="text-indigo-600 font-medium">Open roadmap</a></p>` : ''}
         ${s.notes ? `<p class="text-slate-400 text-xs bg-slate-50 rounded-xl p-3">${esc(s.notes)}</p>` : ''}
       </div>
 
@@ -206,7 +206,7 @@ Views.calendar = async (el) => {
 
       <div class="mt-4 border border-slate-200 rounded-2xl px-4 py-3">
         <label class="flex items-center justify-between text-sm font-semibold text-slate-700 cursor-pointer">
-          <span>🔔 Remind me</span>
+          <span>Remind me</span>
           <input type="checkbox" id="msRemind" ${s.reminder_enabled ? 'checked' : ''} class="w-5 h-5 rounded border-slate-300 text-indigo-600">
         </label>
         <select id="msRemindWhen" class="inp mt-2.5 ${s.reminder_enabled ? '' : 'hidden'}">
@@ -241,16 +241,16 @@ Views.calendar = async (el) => {
       remWhen.classList.toggle('hidden', !remToggle.checked);
       try {
         await API.patch(`/api/sessions/${s.id}`, { status: s.status, reminder_enabled: remToggle.checked, reminder_minutes_before: Number(remWhen.value) });
-        toast(remToggle.checked ? 'Reminder set. 🔔' : 'Reminder removed.', 'info');
+        toast(remToggle.checked ? 'Reminder set.' : 'Reminder removed.', 'info');
       } catch (err) { toast(err.message, 'error'); }
     };
     remWhen.onchange = async () => {
       try {
         await API.patch(`/api/sessions/${s.id}`, { status: s.status, reminder_enabled: true, reminder_minutes_before: Number(remWhen.value) });
-        toast('Reminder updated. 🔔', 'info');
+        toast('Reminder updated.', 'info');
       } catch (err) { toast(err.message, 'error'); }
     };
-    document.getElementById('msDone').onclick = () => act(() => API.patch(`/api/sessions/${s.id}`, { status: 'Completed' }), 'Session completed. 🎉');
+    document.getElementById('msDone').onclick = () => act(() => API.patch(`/api/sessions/${s.id}`, { status: 'Completed' }), 'Session completed.');
     document.getElementById('msMiss').onclick = () => act(() => API.patch(`/api/sessions/${s.id}`, { status: 'Missed' }), 'Marked missed.');
     document.getElementById('msResched').onclick = () => {
       const start = document.getElementById('rsStart').value, end = document.getElementById('rsEnd').value;

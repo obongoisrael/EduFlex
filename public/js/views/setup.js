@@ -19,7 +19,7 @@ Views.setup = async (el) => {
   el.innerHTML = `
     <div class="max-w-2xl mx-auto">
       <div class="text-center mb-6">
-        <h2 class="text-xl sm:text-2xl font-bold text-slate-900">Let's set up your semester 🚀</h2>
+        <h2 class="text-xl sm:text-2xl font-bold text-slate-900">Let's set up your semester</h2>
         <p class="text-sm text-slate-500 mt-1.5">Three quick steps and EduFlex builds your first study schedule.</p>
       </div>
       <div class="flex items-center justify-center gap-3 sm:gap-6 mb-6">
@@ -39,9 +39,9 @@ Views.setup = async (el) => {
       <h3 class="font-bold text-slate-900 mb-1">Step 1 — Add your courses</h3>
       <p class="text-xs text-slate-500 mb-4">Type a course and tap <strong>Add</strong> — repeat for each unit.</p>
       <div class="space-y-2">
-        <input id="w_title" class="inp" placeholder="Course title, e.g. Database Systems">
+        <input id="w_title" class="inp" placeholder="Course title">
         <div class="grid grid-cols-2 gap-2">
-          <input id="w_code" class="inp" placeholder="Code, e.g. CSC 224">
+          <input id="w_code" class="inp" placeholder="Course code">
           <select id="w_diff" class="inp"><option>Easy</option><option selected>Moderate</option><option>Hard</option></select>
         </div>
         <button id="w_add" class="btn btn-primary btn-block">+ Add course</button>
@@ -87,7 +87,7 @@ Views.setup = async (el) => {
         <select id="w_course" class="inp">
           ${courses.map(c => `<option value="${c.id}">${esc(c.code)} — ${esc(c.title)}</option>`).join('')}
         </select>
-        <input id="w_dtitle" class="inp" placeholder="Title, e.g. SQL Practical CAT">
+        <input id="w_dtitle" class="inp" placeholder="Deadline title">
         <div class="grid grid-cols-2 gap-2">
           <select id="w_type" class="inp">${TYPES.map(t => `<option>${t}</option>`).join('')}</select>
           <select id="w_prio" class="inp"><option>Low</option><option selected>Medium</option><option>High</option></select>
@@ -146,7 +146,7 @@ Views.setup = async (el) => {
     <div class="grid sm:grid-cols-3 gap-3">
       ${AVAIL_PRESETS.map((p, i) => `
         <button data-preset="${i}" class="border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/50 rounded-2xl p-4 text-left transition active:scale-[.98]">
-          <div class="text-2xl">${p.icon}</div>
+          <span class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 grid place-items-center shrink-0 [&_svg]:w-5 [&_svg]:h-5">${icon(p.icon)}</span>
           <div class="text-sm font-semibold text-slate-800 mt-1">${p.name}</div>
           <div class="text-xs text-slate-400 mt-0.5">${p.desc}</div>
         </button>`).join('')}
@@ -175,12 +175,12 @@ Views.setup = async (el) => {
 
     <div class="flex flex-col sm:flex-row gap-2 mt-6">
       <button id="w_back" class="btn btn-ghost sm:w-auto">← Back</button>
-      <button id="w_finish" ${slots.length === 0 ? 'disabled' : ''} class="btn btn-success flex-1">⚡ Finish &amp; generate my schedule</button>
+      <button id="w_finish" ${slots.length === 0 ? 'disabled' : ''} class="btn btn-success flex-1">Finish &amp; generate my schedule</button>
     </div>`;
 
   body.querySelectorAll('[data-preset]').forEach(b => b.onclick = async () => {
     b.disabled = true;
-    try { await applyAvailPreset(AVAIL_PRESETS[Number(b.dataset.preset)]); toast('Availability added. 🕒'); Views.setup(el); }
+    try { await applyAvailPreset(AVAIL_PRESETS[Number(b.dataset.preset)]); toast('Availability added.'); Views.setup(el); }
     catch (err) { toast(err.message, 'error'); b.disabled = false; }
   });
   document.getElementById('w_addslot').onclick = async () => {
@@ -204,11 +204,11 @@ Views.setup = async (el) => {
     try {
       const r = await API.post('/api/sessions/generate');
       Views.setup._state = { step: 1 };
-      toast(r.created > 0 ? `Setup complete — ${r.created} session${r.created === 1 ? '' : 's'} planned! 🎉` : 'Setup complete!');
+      toast(r.created > 0 ? `Setup complete — ${r.created} session${r.created === 1 ? '' : 's'} planned!` : 'Setup complete!');
       location.hash = '#/dashboard';
     } catch (err) {
       toast(err.message, 'error');
-      btn.disabled = false; btn.textContent = '⚡ Finish & generate my schedule';
+      btn.disabled = false; btn.textContent = 'Finish & generate my schedule';
     }
   };
 };

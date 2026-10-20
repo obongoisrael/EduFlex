@@ -24,13 +24,13 @@ Views.peers = async (el) => {
       </button>
     </div>
 
-    ${!enabled ? `<div class="mt-4">${emptyState('🤝', 'Peer matching is off',
+    ${!enabled ? `<div class="mt-4">${emptyState('peers', 'Peer matching is off',
         'Enable it above to discover students studying the same courses as you.')}</div>` : `
 
       <section class="mt-6">
         <h3 class="font-bold text-slate-900 mb-3">Suggested study partners</h3>
         ${matchData.matches.length === 0
-          ? emptyState('🔍', 'No matches yet', 'Matches appear when other opted-in students share your courses or roadmap subjects.')
+          ? emptyState('search', 'No matches yet', 'Matches appear when other opted-in students share your courses or roadmap subjects.')
           : `<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               ${matchData.matches.map((m, i) => `
                 <div class="card p-5">
@@ -42,18 +42,18 @@ Views.peers = async (el) => {
                     </div>
                   </div>
                   <div class="text-xs text-slate-500 mt-3 space-y-1">
-                    <div>📘 ${m.shared_courses.map(esc).join('; ')}</div>
-                    ${m.common_slot ? `<div>🕒 ${esc(m.common_slot)}</div>` : ''}
+                    <div>${m.shared_courses.map(esc).join('; ')}</div>
+                    ${m.common_slot ? `<div>${esc(m.common_slot)}</div>` : ''}
                     <div class="text-slate-400">${esc(m.match_reason)}</div>
                   </div>
-                  <button data-request="${i}" class="btn btn-primary btn-sm btn-block mt-4">📨 Send study request</button>
+                  <button data-request="${i}" class="btn btn-primary btn-sm btn-block mt-4">Send study request</button>
                 </div>`).join('')}
             </div>`}
       </section>
 
       <section class="mt-6 grid lg:grid-cols-2 gap-4">
         <div class="card p-5">
-          <h3 class="font-bold text-slate-900 text-sm mb-3">📥 Incoming requests</h3>
+          <h3 class="font-bold text-slate-900 text-sm mb-3">Incoming requests</h3>
           ${reqData.incoming.length === 0 ? '<p class="text-sm text-slate-400 py-4 text-center">No incoming requests.</p>'
             : reqData.incoming.map(r => `
               <div class="py-3 border-b border-slate-50 last:border-0">
@@ -75,7 +75,7 @@ Views.peers = async (el) => {
         </div>
 
         <div class="card p-5">
-          <h3 class="font-bold text-slate-900 text-sm mb-3">📤 Sent requests</h3>
+          <h3 class="font-bold text-slate-900 text-sm mb-3">Sent requests</h3>
           ${reqData.sent.length === 0 ? '<p class="text-sm text-slate-400 py-4 text-center">No requests sent yet.</p>'
             : reqData.sent.map(r => `
               <div class="py-3 border-b border-slate-50 last:border-0 flex items-center justify-between gap-2">
@@ -93,11 +93,11 @@ Views.peers = async (el) => {
 
       <section class="mt-6">
         <div class="flex items-center justify-between gap-3 mb-3">
-          <h3 class="font-bold text-slate-900">👥 Study groups</h3>
+          <h3 class="font-bold text-slate-900">Study groups</h3>
           <button id="newGroupBtn" class="btn btn-primary btn-sm">+ Create</button>
         </div>
         ${groups.length === 0
-          ? emptyState('👥', 'No study groups yet', 'Create the first study group for one of your courses.')
+          ? emptyState('users', 'No study groups yet', 'Create the first study group for one of your courses.')
           : `<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               ${groups.map(g => `
                 <div class="card p-5">
@@ -106,8 +106,8 @@ Views.peers = async (el) => {
                     ${badge(`${g.member_count}`, 'bg-indigo-50 text-indigo-700')}
                   </div>
                   <div class="text-xs text-slate-500 mt-2 space-y-0.5">
-                    ${g.course_name ? `<div class="truncate">📘 ${esc(g.course_name)}</div>` : ''}
-                    <div class="truncate">🏛️ ${esc(g.institution)}</div>
+                    ${g.course_name ? `<div class="truncate">${esc(g.course_name)}</div>` : ''}
+                    <div class="truncate">${esc(g.institution)}</div>
                   </div>
                   <div class="flex flex-wrap gap-1.5 mt-3">
                     ${g.members.map(m => `<span title="${esc(m.institution)}" class="w-7 h-7 rounded-full ${m.role === 'owner' ? 'bg-indigo-600' : 'bg-slate-400'} text-white grid place-items-center text-[10px] font-bold">${esc(m.public_username)}</span>`).join('')}
@@ -134,8 +134,8 @@ Views.peers = async (el) => {
     openModal(`Study request to ${m.public_username}`, `
       <form id="reqForm" class="space-y-4">
         ${field('Course (optional)', `<input class="inp" id="rq_course" value="${esc((m.shared_courses[0] || '').split(' — ')[1] || '')}">`)}
-        ${field('Message', `<textarea class="inp" id="rq_msg" rows="3" placeholder="Hi! Want to revise together before the CAT?"></textarea>`)}
-        <p class="text-xs text-slate-500 bg-slate-50 rounded-xl p-3">🔒 They see only your initials (${esc(App.user.public_username)}) and institution.</p>
+        ${field('Message', `<textarea class="inp" id="rq_msg" rows="3"></textarea>`)}
+        <p class="text-xs text-slate-500 bg-slate-50 rounded-xl p-3">They see only your initials (${esc(App.user.public_username)}) and institution.</p>
         <div class="flex flex-col-reverse sm:flex-row justify-end gap-2">
           <button type="button" onclick="closeModal()" class="btn btn-ghost">Cancel</button>
           <button type="submit" class="btn btn-primary">Send request</button>
@@ -149,13 +149,13 @@ Views.peers = async (el) => {
           course_name: document.getElementById('rq_course').value.trim(),
           message: document.getElementById('rq_msg').value.trim(),
         });
-        closeModal(); toast('Study request sent. 📨'); Views.peers(el);
+        closeModal(); toast('Study request sent.'); Views.peers(el);
       } catch (err) { toast(err.message, 'error'); }
     };
   });
 
   el.querySelectorAll('[data-req-accept]').forEach(b => b.onclick = async () => {
-    try { await API.patch(`/api/peers/requests/${b.dataset.reqAccept}`, { status: 'Accepted' }); toast('Request accepted! 🎉'); Views.peers(el); }
+    try { await API.patch(`/api/peers/requests/${b.dataset.reqAccept}`, { status: 'Accepted' }); toast('Request accepted!'); Views.peers(el); }
     catch (err) { toast(err.message, 'error'); }
   });
   el.querySelectorAll('[data-req-decline]').forEach(b => b.onclick = async () => {
@@ -167,8 +167,8 @@ Views.peers = async (el) => {
   if (newGroupBtn) newGroupBtn.onclick = () => {
     openModal('Create study group', `
       <form id="groupForm" class="space-y-4">
-        ${field('Group name', `<input class="inp" id="gr_name" required placeholder="e.g. CSC 224 Revision Squad">`)}
-        ${field('Course (optional)', `<input class="inp" id="gr_course" placeholder="e.g. Database Systems">`)}
+        ${field('Group name', `<input class="inp" id="gr_name" required>`)}
+        ${field('Course (optional)', `<input class="inp" id="gr_course">`)}
         <div class="flex flex-col-reverse sm:flex-row justify-end gap-2">
           <button type="button" onclick="closeModal()" class="btn btn-ghost">Cancel</button>
           <button type="submit" class="btn btn-primary">Create</button>
@@ -180,7 +180,7 @@ Views.peers = async (el) => {
       if (!name) return toast('Group name is required.', 'error');
       try {
         await API.post('/api/peers/groups', { name, course_name: document.getElementById('gr_course').value.trim() });
-        closeModal(); toast('Study group created. 👥'); Views.peers(el);
+        closeModal(); toast('Study group created.'); Views.peers(el);
       } catch (err) { toast(err.message, 'error'); }
     };
   };
@@ -189,7 +189,7 @@ Views.peers = async (el) => {
     const isMember = b.dataset.member === '1';
     try {
       await API.post(`/api/peers/groups/${b.dataset.group}/${isMember ? 'leave' : 'join'}`);
-      toast(isMember ? 'You left the group.' : 'Welcome to the group! 👥');
+      toast(isMember ? 'You left the group.' : 'Welcome to the group!');
       Views.peers(el);
     } catch (err) { toast(err.message, 'error'); }
   });

@@ -7,7 +7,6 @@ Views.resources = async (el) => {
   const CATEGORIES = ['Notes', 'Slides', 'PDF', 'Past Paper', 'Assignment Guide', 'Other'];
   const plus = App.isPlus();
   if (!plus) { state.topQuality = false; if (state.sort === 'quality') state.sort = 'recent'; } // quality filters are Plus
-  const CAT_ICON = { Notes: '📝', Slides: '📊', PDF: '📄', 'Past Paper': '📜', 'Assignment Guide': '🧭', Other: '📁' };
 
   const params = new URLSearchParams();
   if (state.search) params.set('search', state.search);
@@ -29,12 +28,12 @@ Views.resources = async (el) => {
 
   el.innerHTML = `
     <div class="flex items-center justify-between gap-3 mb-4">
-      <p class="text-sm text-slate-500 min-w-0 truncate">${resources.length} resource${resources.length === 1 ? '' : 's'} · initials only 🔒</p>
-      <button id="uploadBtn" class="btn btn-primary btn-sm shrink-0">📤 Upload</button>
+      <p class="text-sm text-slate-500 min-w-0 truncate">${resources.length} resource${resources.length === 1 ? '' : 's'} · initials only</p>
+      <button id="uploadBtn" class="btn btn-primary btn-sm shrink-0">Upload</button>
     </div>
 
     <div class="card p-4 mb-4">
-      <input id="f_search" class="inp" placeholder="Search title, course, code, institution…" value="${esc(state.search)}">
+      <input id="f_search" class="inp" placeholder="Search" value="${esc(state.search)}">
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 mt-2">
         <select id="f_category" class="inp"><option value="">All categories</option>
           ${CATEGORIES.map(c => `<option ${state.category === c ? 'selected' : ''}>${c}</option>`).join('')}</select>
@@ -43,16 +42,16 @@ Views.resources = async (el) => {
         <select id="f_sort" class="inp">
           <option value="recent" ${state.sort === 'recent' ? 'selected' : ''}>Most recent</option>
           <option value="top" ${state.sort === 'top' ? 'selected' : ''}>Most upvoted</option>
-          <option value="quality" ${state.sort === 'quality' ? 'selected' : ''}>Highest quality${plus ? '' : ' 👑'}</option>
+          <option value="quality" ${state.sort === 'quality' ? 'selected' : ''}>Highest quality${plus ? '' : ' (Plus)'}</option>
         </select>
-        <input id="f_course" class="inp" placeholder="Course name/code…" value="${esc(state.course)}">
+        <input id="f_course" class="inp" placeholder="Course name or code" value="${esc(state.course)}">
       </div>
       <div class="flex flex-wrap items-center gap-4 mt-3">
         <label class="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
           <input type="checkbox" id="f_mine" ${state.mine ? 'checked' : ''} class="w-4 h-4 rounded border-slate-300 text-indigo-600"> My uploads
         </label>
         <label class="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
-          <input type="checkbox" id="f_quality" ${state.topQuality ? 'checked' : ''} class="w-4 h-4 rounded border-slate-300 text-emerald-600"> ⭐ Highly recommended ${plus ? '' : proBadge()}
+          <input type="checkbox" id="f_quality" ${state.topQuality ? 'checked' : ''} class="w-4 h-4 rounded border-slate-300 text-emerald-600"> Highly recommended ${plus ? '' : proBadge()}
         </label>
         <button id="f_clear" class="text-xs font-semibold text-slate-400 hover:text-slate-600 ml-auto">Clear</button>
       </div>
@@ -60,7 +59,7 @@ Views.resources = async (el) => {
 
     ${recData && recData.resources.length ? `
       <div class="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 mb-4">
-        <h3 class="text-sm font-bold text-indigo-900 mb-3">✨ Recommended for your courses</h3>
+        <h3 class="text-sm font-bold text-indigo-900 mb-3">Recommended for your courses</h3>
         <div class="grid sm:grid-cols-3 gap-3">
           ${recData.resources.map(r => `
             <div class="bg-white rounded-2xl p-4 border border-indigo-100">
@@ -68,30 +67,30 @@ Views.resources = async (el) => {
               <div class="text-xs text-slate-400 mt-1 truncate">${esc(r.category)} · ${esc(r.course_name)}</div>
               <div class="mt-2">${qualityBadge(r.quality_score, r.quality_label)}</div>
               <div class="flex gap-2 mt-3">
-                <a href="/api/resources/${r.id}/view" target="_blank" rel="noopener" class="btn btn-ghost btn-sm flex-1">👁 View</a>
-                <a href="/api/resources/${r.id}/download" download class="btn btn-ghost btn-sm flex-1">⬇</a>
+                <a href="/api/resources/${r.id}/view" target="_blank" rel="noopener" class="btn btn-ghost btn-sm flex-1">View</a>
+                <a href="/api/resources/${r.id}/download" download class="btn btn-ghost btn-sm flex-1 [&_svg]:w-4 [&_svg]:h-4" title="Download" aria-label="Download">${icon('download')}</a>
               </div>
             </div>`).join('')}
         </div>
       </div>` : ''}
 
     ${resources.length === 0
-      ? emptyState('📚', 'No resources found', hasFilters ? 'Try adjusting your search or filters.' : 'Be the first to share notes or past papers!',
+      ? emptyState('resources', 'No resources found', hasFilters ? 'Try adjusting your search or filters.' : 'Be the first to share notes or past papers!',
           `<button onclick="document.getElementById('uploadBtn').click()" class="btn btn-primary">Upload a resource</button>`)
       : `<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           ${resources.map(r => `
             <div class="card p-5 flex flex-col">
               <div class="flex items-start justify-between gap-2">
-                <span class="text-2xl">${CAT_ICON[r.category] || '📁'}</span>
+                ${tintIcon(r.category === 'Slides' ? 'layers' : r.category === 'Past Paper' ? 'exam' : 'file', 'blue', '2.5rem')}
                 ${badge(r.category, 'bg-indigo-50 text-indigo-700')}
               </div>
               <h3 class="font-semibold text-slate-900 mt-3 leading-snug">${esc(r.title)}</h3>
               <p class="text-xs text-slate-400 mt-1 flex-1 line-clamp-2">${esc(r.description || '')}</p>
               <div class="mt-2">${qualityBadge(r.quality_score, r.quality_label)}</div>
               <div class="text-xs text-slate-500 mt-3 space-y-0.5">
-                <div class="truncate">📘 ${esc(r.course_name)}${r.course_code ? ` (${esc(r.course_code)})` : ''}</div>
-                <div class="truncate">🏛️ ${esc(r.institution)}</div>
-                <div class="text-slate-400 truncate">📎 ${fmtSize(r.file_size)} · ${fmtDate(r.created_at)} · 👁 ${r.views_count || 0} · ⬇ ${r.downloads_count || 0}</div>
+                <div class="truncate">${esc(r.course_name)}${r.course_code ? ` (${esc(r.course_code)})` : ''}</div>
+                <div class="truncate">${esc(r.institution)}</div>
+                <div class="text-slate-400 truncate">${fmtSize(r.file_size)} · ${fmtDate(r.created_at)} · ${r.views_count || 0} · ${r.downloads_count || 0}</div>
               </div>
               <div class="flex items-center justify-between gap-2 mt-4 pt-3 border-t border-slate-50">
                 <div class="flex items-center gap-2 min-w-0" title="Contributor (initials only)">
@@ -100,9 +99,9 @@ Views.resources = async (el) => {
                 </div>
                 <div class="flex items-center gap-1.5 shrink-0">
                   <button data-vote="${r.id}" class="btn btn-sm !px-2.5 ${r.voted_by_me ? 'bg-indigo-600 text-white' : 'btn-ghost'}">▲ ${r.upvotes_count}</button>
-                  <a href="/api/resources/${r.id}/view" target="_blank" rel="noopener" class="btn btn-ghost btn-sm !px-2.5" title="View">👁</a>
-                  <a href="/api/resources/${r.id}/download" download class="btn btn-ghost btn-sm !px-2.5" title="Download">⬇</a>
-                  ${r.is_owner ? `<button data-del="${r.id}" class="btn btn-sm !px-2 text-rose-500 bg-rose-50">🗑</button>` : ''}
+                  <a href="/api/resources/${r.id}/view" target="_blank" rel="noopener" class="btn btn-ghost btn-sm !px-2.5 [&_svg]:w-4 [&_svg]:h-4" title="View" aria-label="View">${icon('eye')}</a>
+                  <a href="/api/resources/${r.id}/download" download class="btn btn-ghost btn-sm !px-2.5 [&_svg]:w-4 [&_svg]:h-4" title="Download" aria-label="Download">${icon('download')}</a>
+                  ${r.is_owner ? `<button data-del="${r.id}" class="btn btn-sm !px-2 text-rose-500 bg-rose-50 [&_svg]:w-4 [&_svg]:h-4" title="Delete" aria-label="Delete">${icon('trash')}</button>` : ''}
                 </div>
               </div>
             </div>`).join('')}
@@ -142,16 +141,15 @@ Views.resources = async (el) => {
     if (App.offline) return toast('You are offline — uploading needs a connection.', 'error');
     openModal('Upload Resource', `
       <form id="upForm" class="space-y-4">
-        ${field('Resource title', `<input class="inp" id="up_title" required placeholder="e.g. Data Structures Summary Notes">`)}
-        ${field('Description', `<textarea class="inp" id="up_desc" rows="2" placeholder="What does this cover?"></textarea>`)}
+        ${field('Resource title', `<input class="inp" id="up_title" required>`)}
+        ${field('Description', `<textarea class="inp" id="up_desc" rows="2"></textarea>`)}
         <div class="grid grid-cols-2 gap-3">
-          ${field('Course name', `<input class="inp" id="up_cname" required placeholder="Database Systems">`)}
-          ${field('Course code', `<input class="inp" id="up_ccode" placeholder="CSC 224">`)}
+          ${field('Course name', `<input class="inp" id="up_cname" required>`)}
+          ${field('Course code', `<input class="inp" id="up_ccode">`)}
         </div>
         ${field('Category', `<select class="inp" id="up_cat">${CATEGORIES.map(c => `<option>${c}</option>`).join('')}</select>`)}
         ${field('PDF file (max 20 MB)', `<input type="file" class="inp !py-2.5" id="up_file" required accept=".pdf,application/pdf">`)}
-        <p class="text-xs text-slate-400 -mt-2">📄 PDF only — so everyone can view it in the browser and download it.</p>
-        <p class="text-xs text-slate-500 bg-slate-50 rounded-xl p-3">🔒 Shared as <strong>${esc(App.user.public_username)}</strong> (${esc(App.user.institution)}). Your full name is never shown.</p>
+        <p class="text-xs text-slate-500 bg-slate-50 rounded-xl p-3">Shared as <strong>${esc(App.user.public_username)}</strong> (${esc(App.user.institution)}). Your full name is never shown.</p>
         <div class="flex flex-col-reverse sm:flex-row justify-end gap-2">
           <button type="button" onclick="closeModal()" class="btn btn-ghost">Cancel</button>
           <button type="submit" id="upSubmit" class="btn btn-primary">Upload</button>
@@ -177,7 +175,7 @@ Views.resources = async (el) => {
 
       const btn = document.getElementById('upSubmit');
       btn.disabled = true; btn.textContent = 'Uploading…';
-      try { await API.post('/api/resources', fd); closeModal(); toast('Resource uploaded. Thanks for sharing! 🎉'); refresh(); }
+      try { await API.post('/api/resources', fd); closeModal(); toast('Resource uploaded. Thanks for sharing!'); refresh(); }
       catch (err) { toast(err.message, 'error'); btn.disabled = false; btn.textContent = 'Upload'; }
     };
   };

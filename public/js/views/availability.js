@@ -15,11 +15,11 @@ Views.availability = async (el) => {
     </div>
 
     <div class="card p-4 mb-4">
-      <div class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">⚡ Quick presets</div>
+      <div class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Quick presets</div>
       <div class="grid sm:grid-cols-3 gap-3">
         ${AVAIL_PRESETS.map((p, i) => `
           <button data-preset="${i}" class="border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/50 rounded-2xl p-4 text-left transition active:scale-[.98]">
-            <div class="flex items-center gap-2"><span class="text-xl">${p.icon}</span>
+            <div class="flex items-center gap-2"><span class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 grid place-items-center shrink-0 [&_svg]:w-5 [&_svg]:h-5">${icon(p.icon)}</span>
             <span class="text-sm font-semibold text-slate-800">${p.name}</span></div>
             <div class="text-xs text-slate-400 mt-1">${p.desc}</div>
           </button>`).join('')}
@@ -27,7 +27,7 @@ Views.availability = async (el) => {
     </div>
 
     ${slots.length === 0
-      ? emptyState('🕒', 'No availability yet', 'Pick a preset above or add your free study times manually.',
+      ? emptyState('availability', 'No availability yet', 'Pick a preset above or add your free study times manually.',
           `<button onclick="document.getElementById('addBtn').click()" class="btn btn-primary">Add your first slot</button>`)
       : `<div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
           ${dayOrder.map(day => {
@@ -41,7 +41,7 @@ Views.availability = async (el) => {
                       <span class="text-sm font-semibold">${s.start_time} – ${s.end_time}</span>
                       <span class="flex gap-2 shrink-0">
                         <button data-edit="${s.id}" class="opacity-60 hover:opacity-100 text-sm">✎</button>
-                        <button data-del="${s.id}" class="opacity-60 hover:opacity-100 text-sm">🗑</button>
+                        <button data-del="${s.id}" class="opacity-60 hover:opacity-100 text-rose-500 p-1 [&_svg]:w-4 [&_svg]:h-4" title="Delete" aria-label="Delete">${icon('trash')}</button>
                       </span>
                     </div>
                     <div class="text-[11px] mt-0.5">${esc(s.study_intensity)}</div>
@@ -94,7 +94,7 @@ Views.availability = async (el) => {
     b.disabled = true;
     try {
       await applyAvailPreset(AVAIL_PRESETS[Number(b.dataset.preset)]);
-      toast('Preset slots added. 🕒');
+      toast('Preset slots added.');
       autoRegenerate();
       Views.availability(el);
     } catch (err) { toast(err.message, 'error'); b.disabled = false; }

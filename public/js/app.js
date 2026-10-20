@@ -36,10 +36,10 @@ const App = {
       console.error('EduFlex startup error:', err);
       document.getElementById('view').innerHTML = `
         <div class="max-w-md mx-auto mt-16 card p-6 text-center border-rose-200 bg-rose-50">
-          <div class="text-3xl mb-2">⚠️</div>
+          <div class="w-12 h-12 mx-auto mb-3 rounded-2xl bg-rose-100 text-rose-600 grid place-items-center [&_svg]:w-6 [&_svg]:h-6">${icon('alert')}</div>
           <h2 class="font-bold text-rose-800">Something went wrong while starting EduFlex</h2>
           <p class="text-xs text-rose-600 mt-2">${esc(err.message || 'Unknown error')}</p>
-          <button onclick="location.reload()" class="btn btn-primary mt-5">🔄 Reload the app</button>
+          <button onclick="location.reload()" class="btn btn-primary mt-5">Reload the app</button>
         </div>`;
     }
   },
@@ -78,7 +78,6 @@ const App = {
     return new Promise((resolve) => {
       document.getElementById('view').innerHTML = `
         <div class="max-w-md mx-auto card p-6 sm:p-7 mt-2">
-          <div class="text-4xl">👋</div>
           <h2 class="text-xl font-bold text-slate-900 mt-3">Welcome to EduFlex, ${esc(u.first_name)}!</h2>
           <p class="text-sm text-slate-500 mt-1">One last step: where do you study?</p>
           <form id="cpForm" class="space-y-4 mt-5" novalidate>
@@ -86,9 +85,8 @@ const App = {
               ${field('First name', `<input class="inp" id="cp_first" value="${esc(u.first_name)}" required>`)}
               ${field('Last name', `<input class="inp" id="cp_last" value="${esc(u.last_name)}" required>`)}
             </div>
-            ${field('Institution', `<input class="inp" id="cp_inst" placeholder="e.g. Kenyatta University" required>`)}
-            ${field('Programme / course of study', `<input class="inp" id="cp_prog" placeholder="e.g. BSc Computer Science" required>`)}
-            <p class="text-xs text-slate-400">Other students only ever see your initials and institution.</p>
+            ${field('Institution', `<input class="inp" id="cp_inst" required>`)}
+            ${field('Programme / course of study', `<input class="inp" id="cp_prog" required>`)}
             <button type="submit" id="cp_save" class="btn btn-primary btn-block">Continue</button>
           </form>
         </div>`;
@@ -154,7 +152,7 @@ const App = {
 
     document.querySelectorAll('[data-route]').forEach(a => a.classList.toggle('active', a.dataset.route === name));
     // Bottom bar: Home / Calendar / Insights are their own tabs; everything else lives under the grid (More)
-    const tab = ['dashboard', 'calendar', 'insights'].includes(name) ? name : 'more';
+    const tab = ['dashboard', 'calendar', 'resources'].includes(name) ? name : 'more';
     document.querySelectorAll('.tab').forEach(a => a.classList.toggle('active', a.dataset.tab === tab));
     // Home and the features page carry their own greeting header on phones
     document.getElementById('topbar').classList.toggle('mobile-hide', name === 'dashboard' || name === 'more');
@@ -183,7 +181,7 @@ const App = {
       banner.classList.toggle('hidden', !App.offline);
       if (!App.offline) App.syncFocusQueue();
     };
-    window.addEventListener('online', () => { apply(); toast('Back online — syncing. ✅'); App.route(); });
+    window.addEventListener('online', () => { apply(); toast('Back online — syncing.'); App.route(); });
     window.addEventListener('offline', () => { apply(); toast('You are offline. Saved study plan still available.', 'info'); });
     apply();
   },
@@ -196,7 +194,7 @@ const App = {
     try {
       const r = await API.post('/api/focus/sync', { sessions: queue });
       localStorage.removeItem('ef_focus_queue');
-      if (r.synced > 0) toast(`Synced ${r.synced} offline focus session${r.synced === 1 ? '' : 's'}. 🔄`);
+      if (r.synced > 0) toast(`Synced ${r.synced} offline focus session${r.synced === 1 ? '' : 's'}.`);
     } catch { /* still offline — keep the queue */ }
   },
 
@@ -238,7 +236,7 @@ const App = {
     }
     if (App.isPlus() && prefs.sound !== false) App.playBeep(); // free plan: in-app reminder only
 
-    openModal('⏰ Reminder', `
+    openModal('Reminder', `
       <p class="text-sm text-slate-700">${esc(msg)}</p>
       <div class="flex flex-wrap justify-end gap-2 mt-6">
         ${[5, 10, 15].map(m => `<button data-snooze="${m}" class="btn btn-ghost btn-sm">Snooze ${m}m</button>`).join('')}
@@ -269,7 +267,7 @@ const App = {
   async enableBrowserNotifications() {
     if (!('Notification' in window)) { toast('This browser does not support notifications.', 'error'); return false; }
     const perm = await Notification.requestPermission();
-    if (perm === 'granted') { toast('Browser notifications enabled. 🔔'); return true; }
+    if (perm === 'granted') { toast('Browser notifications enabled.'); return true; }
     toast('Not enabled — you will still get in-app reminders.', 'info');
     return false;
   },
@@ -321,7 +319,7 @@ function badge(text, cls) {
 function qualityBadge(score, label) {
   const cls = score >= 80 ? 'bg-emerald-100 text-emerald-700' : score >= 60 ? 'bg-indigo-100 text-indigo-700'
     : score >= 40 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500';
-  return `<span class="inline-block text-[11px] font-semibold px-2.5 py-1 rounded-full ${cls}" title="Resource quality score">⭐ ${score}% · ${esc(label)}</span>`;
+  return `<span class="inline-block text-[11px] font-semibold px-2.5 py-1 rounded-full ${cls}" title="Resource quality score">${score}% · ${esc(label)}</span>`;
 }
 function progressBar(pct, color) {
   const c = color || (pct >= 70 ? 'bg-emerald-500' : pct >= 40 ? 'bg-indigo-500' : 'bg-amber-500');
@@ -391,6 +389,22 @@ const ICONS = {
   logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/>',
   menu: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
   back: '<path d="M19 12H5M12 19l-7-7 7-7"/>',
+  trash: '<path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/>',
+  download: '<path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>',
+  eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  eyeOff: '<path d="M10.6 5.1A10.6 10.6 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-2.3 3.3M6.6 6.6C3.8 8.3 2 12 2 12s3.5 7 10 7c1.9 0 3.6-.6 5-1.5"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2M2 2l20 20"/>',
+  edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  flag: '<path d="M4 22V4M4 4h13l-2 4 2 4H4"/>',
+  alert: '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
+  moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  sunrise: '<path d="M17 18a5 5 0 0 0-10 0M12 2v7M4.2 10.2l1.4 1.4M1 18h2M21 18h2M18.4 11.6l1.4-1.4M23 22H1M8 6l4-4 4 4"/>',
+  mail: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>',
+  file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/>',
+  layers: '<path d="m12 2 10 5-10 5L2 7z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/>',
+  users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6.5 6.5 0 0 1 3.5 6"/>',
+  xcircle: '<circle cx="12" cy="12" r="9"/><path d="m15 9-6 6M9 9l6 6"/>',
+  timer: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4M10 2h4"/>',
   cap: '<path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/><path d="M22 10v6"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   close: '<path d="M18 6 6 18M6 6l12 12"/>',
@@ -427,6 +441,7 @@ function tintIcon(name, tint, size = '2.5rem') {
  */
 const NAV_SECTIONS = [
   { title: 'Your studies', items: [
+    { route: 'resources', label: 'Resource Library', desc: 'Shared notes & past papers', tint: 'teal' },
     { route: 'deadlines', label: 'Deadlines', desc: 'Assignments, CATs, exams & projects', tint: 'amber' },
     { route: 'courses', label: 'Courses', desc: 'Your units and how hard they are', tint: 'sky' },
     { route: 'schedule', label: 'Schedule', desc: 'Your auto-built study plan', tint: 'violet' },
@@ -437,7 +452,6 @@ const NAV_SECTIONS = [
     { route: 'insights', label: 'Smart Insights', desc: 'Risk prediction & what to study next', tint: 'fuchsia', pro: true },
     { route: 'roadmaps', label: 'Roadmaps', desc: 'Step-by-step learning paths · 1 free', tint: 'blue', freeTag: '1 FREE' },
     { route: 'focus', label: 'Focus Timer', desc: 'Pomodoro sessions that count', tint: 'rose' },
-    { route: 'resources', label: 'Resource Library', desc: 'Shared notes & past papers', tint: 'teal' },
     { route: 'peers', label: 'Peer Study', desc: 'Find classmates to study with', tint: 'orange' },
     { route: 'progress', label: 'Progress', desc: 'Hours, streaks & completion', tint: 'emerald' },
     { key: 'recovery', icon: 'recovery', label: 'Missed-Session Recovery', desc: 'Auto-reschedule what you missed', tint: 'violet', pro: true, plusHref: '#/schedule' },
@@ -516,10 +530,10 @@ const INPUT_CLS = 'inp';
 function field(label, inputHTML) {
   return `<div><label class="block text-sm font-medium text-slate-700 mb-1.5">${label}</label>${inputHTML}</div>`;
 }
-function emptyState(icon, title, hint, actionHTML = '') {
+function emptyState(ic, title, hint, actionHTML = '') {
   return `
     <div class="text-center py-14 px-5 card border-dashed">
-      <div class="text-4xl mb-3">${icon}</div>
+      <div class="w-14 h-14 mx-auto mb-4 rounded-2xl bg-indigo-50 text-indigo-500 grid place-items-center [&_svg]:w-7 [&_svg]:h-7">${icon(ic)}</div>
       <h3 class="font-semibold text-slate-700">${esc(title)}</h3>
       <p class="text-sm text-slate-400 mt-1 max-w-sm mx-auto">${esc(hint)}</p>
       ${actionHTML ? `<div class="mt-5">${actionHTML}</div>` : ''}
@@ -529,11 +543,11 @@ function emptyState(icon, title, hint, actionHTML = '') {
 /* ---------- efficiency helpers ---------- */
 
 const AVAIL_PRESETS = [
-  { id: 'evenings', icon: '🌆', name: 'Weekday evenings', desc: 'Mon–Fri · 7–9 pm · Normal',
+  { id: 'evenings', icon: 'moon', name: 'Weekday evenings', desc: 'Mon–Fri · 7–9 pm · Normal',
     slots: [1, 2, 3, 4, 5].map(d => ({ day_of_week: d, start_time: '19:00', end_time: '21:00', study_intensity: 'Normal' })) },
-  { id: 'weekend', icon: '🌤️', name: 'Weekend mornings', desc: 'Sat & Sun · 9 am–12 pm · Deep Focus',
+  { id: 'weekend', icon: 'sun', name: 'Weekend mornings', desc: 'Sat & Sun · 9 am–12 pm · Deep Focus',
     slots: [6, 0].map(d => ({ day_of_week: d, start_time: '09:00', end_time: '12:00', study_intensity: 'Deep Focus' })) },
-  { id: 'early', icon: '🌅', name: 'Early bird', desc: 'Mon–Fri · 6–8 am · Deep Focus',
+  { id: 'early', icon: 'sunrise', name: 'Early bird', desc: 'Mon–Fri · 6–8 am · Deep Focus',
     slots: [1, 2, 3, 4, 5].map(d => ({ day_of_week: d, start_time: '06:00', end_time: '08:00', study_intensity: 'Deep Focus' })) },
 ];
 async function applyAvailPreset(preset) {
@@ -546,6 +560,6 @@ const DEFAULT_HOURS = { 'Assignment': 3, 'CAT/Test': 4, 'Exam': 8, 'Project': 10
 async function autoRegenerate() {
   try {
     const r = await API.post('/api/sessions/generate');
-    if (r.created > 0) toast(`Schedule updated — ${r.created} new session${r.created === 1 ? '' : 's'}. 🗓️`, 'info');
+    if (r.created > 0) toast(`Schedule updated — ${r.created} new session${r.created === 1 ? '' : 's'}.`, 'info');
   } catch { /* non-blocking */ }
 }

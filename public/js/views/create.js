@@ -13,25 +13,25 @@ const FREE_ROADMAPS = 1;
 
 const Create = { tab: 'deadline', courses: [], roadmapCount: 0, returnTab: null, ai: null };
 
-const ROADMAP_SOURCE_BADGE = { ai: '✨ AI-built', template: '📋 Template', custom: '🗺️ Custom' };
+const ROADMAP_SOURCE_BADGE = { ai: 'AI-built', template: 'Template', custom: 'Custom' };
 
 /** Can this student get an AI-built roadmap right now? (status from GET /api/roadmaps/ai) */
 function aiRoadmapReady(ai) { return !!(ai && ai.configured && ai.remaining > 0); }
 
-/** One-line status under the Generate buttons, e.g. "✨ Built by AI · 2 of 3 left this month". */
+/** One-line status under the Generate buttons, e.g. "Built by AI · 2 of 3 left this month". */
 function aiRoadmapNote(ai) {
   if (!ai || !ai.configured) return '';
-  if (ai.remaining > 0) return `✨ Built by AI · ${ai.remaining} of ${ai.limit} left this month`;
-  return `You've used your ${ai.limit} AI builds this month — we'll use an expert template${App.isPlus() ? '' : ' (Plus gets 30 a month 👑)'}`;
+  if (ai.remaining > 0) return `Built by AI · ${ai.remaining} of ${ai.limit} left this month`;
+  return `You've used your ${ai.limit} AI builds this month — we'll use an expert template${App.isPlus() ? '' : ' (Plus gets 30 a month)'}`;
 }
 
 /** Message after a roadmap is generated: says whether Claude built it, and if not, why. */
 function roadmapSourceMessage(structure, ai, saved) {
   const done = saved ? 'created' : 'ready — edit it before saving';
-  if (structure.source === 'ai') return `✨ AI roadmap ${done}.`;
+  if (structure.source === 'ai') return `AI roadmap ${done}.`;
   const why = ai && ai.reason === 'quota' ? 'AI limit reached this month. '
     : ai && ai.reason === 'error' ? 'AI is unavailable right now. ' : '';
-  return `${why}${structure.source === 'template' ? 'Expert-template roadmap' : 'Custom roadmap'} ${done}. 🗺️`;
+  return `${why}${structure.source === 'template' ? 'Expert-template roadmap' : 'Custom roadmap'} ${done}.`;
 }
 
 async function openCreate(tab = 'deadline') {
@@ -85,7 +85,7 @@ function renderCreate() {
       <div class="seg mt-3">
         ${CREATE_TABS.map(x => `
           <button type="button" data-ctab="${x.id}" class="${x.id === Create.tab ? 'on' : ''}">
-            ${x.label}${x.id === 'roadmap' && roadmapLocked() ? ' 👑' : ''}
+            ${x.label}${x.id === 'roadmap' && roadmapLocked() ? ' <span class="pro-badge align-middle">PRO</span>' : ''}
           </button>`).join('')}
       </div>
     </div>
@@ -158,7 +158,7 @@ function courseSelect() {
 function reminderBlock() {
   return `<div class="box">
     <label class="flex items-center justify-between text-sm font-medium text-slate-700 cursor-pointer">
-      <span>🔔 Remind me</span>
+      <span>Remind me</span>
       <input type="checkbox" id="c_remind" class="w-5 h-5 rounded border-slate-300 text-indigo-600">
     </label>
     <div id="c_remind_when" class="hidden mt-3">${chips('remindWhen', [['1440', '1 day before'], ['60', '1 hour before']], '1440', { outline: true })}</div>
@@ -194,7 +194,7 @@ async function createSubmit(fn, { regenerate = false } = {}) {
 
 const CREATE_FORMS = {
   deadline: () => `
-    ${lbl('Title', '<input id="c_title" class="inp inp-soft" placeholder="e.g. Database assignment 2" maxlength="120">')}
+    ${lbl('Title', '<input id="c_title" class="inp inp-soft" maxlength="120">')}
     ${lbl('Course', courseSelect())}
     ${lbl('Type', chips('type', ['Assignment', 'CAT/Test', 'Project', 'Presentation', 'Other'], 'Assignment'))}
     ${lbl('Due', `<div class="grid grid-cols-2 gap-2">
@@ -205,29 +205,27 @@ const CREATE_FORMS = {
     ${saveButtons('Save deadline')}`,
 
   exam: () => `
-    ${lbl('Exam name', '<input id="c_title" class="inp inp-soft" placeholder="e.g. Operating Systems final" maxlength="120">')}
+    ${lbl('Exam name', '<input id="c_title" class="inp inp-soft" maxlength="120">')}
     ${lbl('Course', courseSelect())}
     ${lbl('When', `<div class="grid grid-cols-2 gap-2">
       <input type="date" id="c_date" class="inp inp-soft"><input type="time" id="c_time" value="09:00" class="inp inp-soft"></div>`)}
     ${lbl('Priority', chips('priority', ['Low', 'Medium', 'High'], 'High'))}
     ${lbl('Revision time needed', stepper('c_hours', DEFAULT_HOURS.Exam, 'hours'))}
-    <p class="text-xs text-slate-400 -mt-2">EduFlex spreads this revision across your free time before the exam.</p>
     ${reminderBlock()}
     ${saveButtons('Save exam')}`,
 
   course: () => `
-    ${lbl('Course name', '<input id="c_ctitle" class="inp inp-soft" placeholder="e.g. Database Systems" maxlength="120">')}
-    ${lbl('Course code', '<input id="c_code" class="inp inp-soft uppercase" placeholder="e.g. CSC 224" maxlength="20">')}
+    ${lbl('Course name', '<input id="c_ctitle" class="inp inp-soft" maxlength="120">')}
+    ${lbl('Course code', '<input id="c_code" class="inp inp-soft uppercase" maxlength="20">')}
     ${lbl('Difficulty', chips('difficulty', ['Easy', 'Moderate', 'Hard'], 'Moderate'))}
-    <p class="text-xs text-slate-400 -mt-2">Harder courses get longer study sessions.</p>
-    ${lbl('Notes (optional)', '<textarea id="c_desc" rows="3" class="inp inp-soft" placeholder="Lecturer, venue, anything useful…"></textarea>')}
+    ${lbl('Notes (optional)', '<textarea id="c_desc" rows="3" class="inp inp-soft"></textarea>')}
     ${saveButtons('Save course')}`,
 
   free: () => `
     ${lbl('Quick presets', `<div class="grid gap-2">
       ${AVAIL_PRESETS.map(p => `
         <button type="button" data-preset="${p.id}" class="box !p-3 flex items-center gap-3 text-left hover:border-indigo-300 active:scale-[.99] transition">
-          <span class="text-2xl">${p.icon}</span>
+          <span class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 grid place-items-center shrink-0 [&_svg]:w-5 [&_svg]:h-5">${icon(p.icon)}</span>
           <span><span class="block text-sm font-semibold text-slate-800">${esc(p.name)}</span>
           <span class="block text-xs text-slate-400">${esc(p.desc)}</span></span>
         </button>`).join('')}</div>`)}
@@ -243,18 +241,17 @@ const CREATE_FORMS = {
       <div class="w-14 h-14 mx-auto rounded-2xl grid place-items-center text-white bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-amber-500/30">${icon('crown')}</div>
       <h3 class="font-bold text-slate-900 text-lg mt-4">Your free roadmap is in use</h3>
       <p class="text-sm text-slate-500 mt-1.5">The free plan includes ${FREE_ROADMAPS} learning roadmap. EduFlex Plus unlocks unlimited roadmaps for every unit you take.</p>
-      <a href="#/premium" onclick="closeCreate()" class="btn btn-primary btn-block !py-4 !rounded-2xl mt-6">👑 Go Premium</a>
+      <a href="#/premium" onclick="closeCreate()" class="btn btn-primary btn-block !py-4 !rounded-2xl mt-6">Go Premium</a>
       <a href="#/roadmaps" onclick="closeCreate()" class="btn btn-outline btn-block !rounded-2xl mt-2.5">View my roadmap</a>
     </div>` : `
-    ${lbl('What do you want to learn?', `<input id="c_rm_name" class="inp inp-soft" placeholder="e.g. Database Systems" list="c_rm_list" maxlength="100">
+    ${lbl('What do you want to learn?', `<input id="c_rm_name" class="inp inp-soft" list="c_rm_list" maxlength="100">
       <datalist id="c_rm_list">${Create.courses.map(c => `<option value="${esc(c.title)}">`).join('')}</datalist>`)}
-    ${lbl('Course code (optional)', '<input id="c_rm_code" class="inp inp-soft uppercase" placeholder="e.g. CSC 224" maxlength="20">')}
+    ${lbl('Course code (optional)', '<input id="c_rm_code" class="inp inp-soft uppercase" maxlength="20">')}
     ${lbl('Your level', chips('level', ['Beginner', 'Intermediate', 'Advanced'], 'Beginner'))}
     ${lbl('Learning style', chips('style', ['Mixed', 'Theory-based', 'Practical', 'Project-based', 'Exam-focused'], 'Mixed'))}
     ${lbl('Duration', chips('rmdays', [['7', '1 week'], ['14', '2 weeks'], ['30', '1 month'], ['60', '2 months']], '14'))}
     ${lbl('Finish by (optional)', '<input type="date" id="c_rm_date" class="inp inp-soft">')}
-    ${!App.isPlus() ? `<p class="text-xs text-slate-400 -mt-2"><span class="free-badge">FREE</span> Your plan includes ${FREE_ROADMAPS} roadmap · unlimited with Plus 👑</p>` : ''}
-    ${saveButtons(aiRoadmapReady(Create.ai) ? '✨ Build with AI' : '✨ Generate roadmap')}
+    ${saveButtons(aiRoadmapReady(Create.ai) ? 'Build with AI' : 'Generate roadmap')}
     ${aiRoadmapNote(Create.ai) ? `<p class="text-[11px] text-slate-400 text-center -mt-2">${esc(aiRoadmapNote(Create.ai))}</p>` : ''}
     <a href="#/roadmaps/new" onclick="closeCreate()" class="block text-center text-xs font-semibold text-indigo-600">Prefer to review and edit before saving? Open the full builder →</a>`,
 };
@@ -289,7 +286,7 @@ function bindDeadlineLike(type) {
         reminder_enabled: document.getElementById('c_remind').checked,
         reminder_minutes_before: Number(chipVal('remindWhen')) || 1440,
       });
-      return type === 'Exam' ? 'Exam added — revision will be scheduled. 📚' : 'Deadline added. ⏰';
+      return type === 'Exam' ? 'Exam added — revision will be scheduled.' : 'Deadline added.';
     }, { regenerate: true });
   };
 }
@@ -323,10 +320,10 @@ const CREATE_BIND = {
           Create.tab = Create.returnTab; Create.returnTab = null;
           renderCreate();
           document.getElementById('c_course').value = course.id;
-          toast('Course added — now finish your entry. 📘');
+          toast('Course added — now finish your entry.');
           return false;
         }
-        return 'Course added. 📘';
+        return 'Course added.';
       });
     };
   },
@@ -335,7 +332,7 @@ const CREATE_BIND = {
     document.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => createSubmit(async () => {
       const preset = AVAIL_PRESETS.find(p => p.id === b.dataset.preset);
       await applyAvailPreset(preset);
-      return `${preset.name} added. 🕒`;
+      return `${preset.name} added.`;
     }, { regenerate: true }));
     document.getElementById('createForm').onsubmit = (e) => {
       e.preventDefault();
@@ -347,7 +344,7 @@ const CREATE_BIND = {
         for (const d of days) {
           await API.post('/api/availability', { day_of_week: d, start_time: start, end_time: end, study_intensity: chipVal('intensity') });
         }
-        return `Free time added for ${days.length} day${days.length === 1 ? '' : 's'}. 🕒`;
+        return `Free time added for ${days.length} day${days.length === 1 ? '' : 's'}.`;
       }, { regenerate: true });
     };
   },
@@ -371,13 +368,13 @@ const CREATE_BIND = {
       const linked = Create.courses.find(c => c.title.toLowerCase() === name.toLowerCase());
       if (linked) { body.course_id = linked.id; body.difficulty = linked.difficulty; }
       const btn = document.getElementById('c_save');
-      if (btn) btn.textContent = aiRoadmapReady(Create.ai) ? '✨ Building with AI… (up to a minute)' : 'Generating…';
+      if (btn) btn.textContent = aiRoadmapReady(Create.ai) ? 'Building with AI… (up to a minute)' : 'Generating…';
       createSubmit(async () => {
         const { structure, ai } = await API.post('/api/roadmaps/preview', body);
         const { id } = await API.post('/api/roadmaps', { ...body, structure });
         location.hash = `#/roadmaps/${id}`;
         return roadmapSourceMessage(structure, ai, true);
-      }).finally(() => { if (btn && document.body.contains(btn)) btn.textContent = aiRoadmapReady(Create.ai) ? '✨ Build with AI' : '✨ Generate roadmap'; });
+      }).finally(() => { if (btn && document.body.contains(btn)) btn.textContent = aiRoadmapReady(Create.ai) ? 'Build with AI' : 'Generate roadmap'; });
     };
   },
 };
