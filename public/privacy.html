@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#2f4579" />
+  <title>Privacy Policy — EduFlex</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Same brand palette as the app: "indigo" utilities render as EduFlex university navy.
+    tailwind.config = { theme: { extend: { colors: { indigo: {
+      50: '#f2f5fb', 100: '#e1e8f5', 200: '#c5d2ea', 300: '#9db2d9', 400: '#6f8bc2',
+      500: '#4c6aab', 600: '#3a5594', 700: '#2f4579', 800: '#283a63', 900: '#223051', 950: '#151e35',
+    } } } } };
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family:'Poppins', system-ui, sans-serif; -webkit-tap-highlight-color:transparent; }
+    .inp { width:100%; border:1px solid #e2e8f0; border-radius:.875rem; padding:.8rem 1rem; font-size:1rem; min-height:3rem; transition:border-color .15s, box-shadow .15s; }
+    .inp:focus { outline:none; border-color:#6366f1; box-shadow:0 0 0 3px rgba(99,102,241,.15); }
+    .btn-primary { background:linear-gradient(135deg,#4c6aab,#2f4579); color:#fff; box-shadow:0 8px 24px -8px rgba(47,69,121,.6);
+                   border-radius:.875rem; padding:.85rem 1.5rem; min-height:3rem; font-weight:600; width:100%; transition:transform .12s; }
+    .btn-primary:active { transform:scale(.98); }
+    .btn-primary:disabled { opacity:.6; }
+  </style>
+</head>
+<body class="bg-gradient-to-b from-indigo-50 via-white to-white min-h-screen flex flex-col">
+
+  <header class="h-16 flex items-center px-5">
+    <a href="/" class="flex items-center gap-2.5">
+      <span class="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#f6c453] to-[#e9a526] text-[#1c2745] grid place-items-center shadow-lg shadow-amber-500/30" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/><path d="M22 10v6"/></svg></span>
+      <span class="font-bold text-xl text-slate-900">EduFlex</span>
+    </a>
+  </header>
+
+  <main class="flex-1 px-4 py-8">
+    <article class="max-w-2xl mx-auto bg-white rounded-3xl shadow-xl shadow-slate-200/60 border border-slate-100 p-6 sm:p-10 text-slate-700 leading-relaxed text-[.95rem]">
+      <h1 class="text-2xl sm:text-3xl font-bold text-slate-900">Privacy Policy</h1>
+      <p class="text-sm text-slate-400 mt-1">Last updated: 20 October 2026</p>
+      <p class="mt-3">EduFlex is a study planner for college and university students. This policy explains what information EduFlex collects, why, who it is shared with, and the choices you have.</p>
+      <h2 class="text-lg font-bold text-slate-900 mt-8 mb-2">Information we collect</h2>
+      <ul class="list-disc pl-5 mt-3 space-y-1.5">
+        <li><strong>Account details:</strong> your first and last name, email address, institution, programme of study, and your password (stored only as a secure one-way hash, never in readable form).</li>
+        <li><strong>Sign in with Google:</strong> if you choose Continue with Google, we receive your name, email address and Google account ID from Google. We do not receive your Google password.</li>
+        <li><strong>Your study information:</strong> courses, deadlines, free-time slots, study sessions, focus sessions, learning roadmaps and progress that you add or that EduFlex generates for you.</li>
+        <li><strong>Resources you share:</strong> PDF files you upload to the resource library, with the title, course and description you give them.</li>
+        <li><strong>Peer study:</strong> if you turn on peer matching, your courses are used to suggest study partners, and study requests and groups you create or join.</li>
+        <li><strong>Technical information:</strong> a login cookie that keeps you signed in, the time of your last login, and settings saved on your device (for example your offline study plan and reminder preferences).</li>
+      </ul>
+      <h2 class="text-lg font-bold text-slate-900 mt-8 mb-2">How we use it</h2>
+      <ul class="list-disc pl-5 mt-3 space-y-1.5">
+        <li>To run your account: sign you in, plan your study schedule, track deadlines and progress, and send reminders.</li>
+        <li>To send account emails: confirming your email address and resetting your password.</li>
+        <li>To share resources and support peer study, if you use those features.</li>
+        <li>To keep EduFlex secure: limiting repeated failed logins and preventing misuse.</li>
+      </ul>
+      <p class="mt-3">We do not sell your personal information and we do not show advertising.</p>
+      <h2 class="text-lg font-bold text-slate-900 mt-8 mb-2">What other students can see</h2>
+      <p class="mt-3">Other students only ever see your <strong>initials and institution</strong>, for example next to resources you share or in peer study. Your full name and email address are never shown to other students. EduFlex administrators can see full account details in order to manage the service.</p>
+      <h2 class="text-lg font-bold text-slate-900 mt-8 mb-2">Services we use</h2>
+      <p class="mt-3">EduFlex relies on a small number of service providers, who process data only to provide their service to us:</p>
+      <ul class="list-disc pl-5 mt-3 space-y-1.5">
+        <li><strong>Render</strong>: hosts the EduFlex application.</li>
+        <li><strong>Backblaze</strong>: stores encrypted backups of the EduFlex database.</li>
+        <li><strong>Brevo</strong> and/or <strong>Google (Gmail)</strong>: deliver account emails such as confirmation and password-reset messages.</li>
+        <li><strong>Google</strong>: provides Continue with Google sign-in, if you use it.</li>
+        <li><strong>Anthropic (Claude)</strong>: when you create a learning roadmap with AI, the course or topic details you enter (such as the subject, level, learning style, duration and goal) are sent to generate the roadmap. Your name and email are not sent.</li>
+      </ul>
+      <h2 class="text-lg font-bold text-slate-900 mt-8 mb-2">How long we keep it</h2>
+      <p class="mt-3">We keep your information for as long as your account exists. When an account is deleted, its study information and uploaded files are deleted too; encrypted backups are overwritten over time.</p>
+      <h2 class="text-lg font-bold text-slate-900 mt-8 mb-2">Your choices and rights</h2>
+      <ul class="list-disc pl-5 mt-3 space-y-1.5">
+        <li>You can view and update your name, institution and programme at any time in Profile.</li>
+        <li>You can turn peer matching on or off at any time.</li>
+        <li>You can delete resources you have uploaded.</li>
+        <li>You can ask for a copy of your information, or for your account and data to be deleted, by emailing <a href="mailto:israelmusk00@gmail.com" class="text-indigo-600 font-semibold hover:underline">israelmusk00@gmail.com</a>.</li>
+      </ul>
+      <p class="mt-3">Where data protection laws apply to you, such as Kenya's Data Protection Act, 2019, you may have further rights, including to object to processing or to complain to your data protection authority.</p>
+      <h2 class="text-lg font-bold text-slate-900 mt-8 mb-2">Security</h2>
+      <p class="mt-3">Passwords are stored as one-way hashes, connections to EduFlex are encrypted (HTTPS), uploaded files are only available to signed-in users, and backups are encrypted. No service can be completely secure, so please use a strong, unique password.</p>
+      <h2 class="text-lg font-bold text-slate-900 mt-8 mb-2">Children</h2>
+      <p class="mt-3">EduFlex is intended for college and university students and is not directed at children under 13.</p>
+      <h2 class="text-lg font-bold text-slate-900 mt-8 mb-2">Changes and contact</h2>
+      <p class="mt-3">If we change this policy, we will update the date at the top. Questions or requests: <a href="mailto:israelmusk00@gmail.com" class="text-indigo-600 font-semibold hover:underline">israelmusk00@gmail.com</a>.</p>
+      <p class="mt-10 text-sm"><a href="/" class="text-indigo-600 font-semibold hover:underline">Back to EduFlex</a></p>
+    </article>
+  </main>
+  <footer class="py-6 text-center text-xs text-slate-400">
+    <a href="/privacy.html" class="hover:text-slate-600">Privacy Policy</a> · <a href="/terms.html" class="hover:text-slate-600">Terms of Service</a>
+  </footer>
+</body>
+</html>
