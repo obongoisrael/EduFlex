@@ -17,17 +17,26 @@ const App = {
       let user;
       try {
         ({ user } = await API.get('/api/auth/me'));
-      } catch {
-        document.getElementById('view').innerHTML =
-          '<div class="text-center py-20 text-sm text-slate-500">Redirecting to login… ' +
-          '<a href="/login.html" class="text-indigo-600 font-semibold hover:underline">Click here</a> if nothing happens.</div>';
-        window.location.replace('/login.html');
-        return;
+        try { localStorage.setItem('ef_user', JSON.stringify(user)); } catch { /* storage unavailable */ }
+      } catch (err) {
+        // No connection (not "logged out"): open with the account saved on this device,
+        // so offline mode can show the saved study plan.
+        const noNetwork = err instanceof TypeError || !navigator.onLine;
+        let saved = null;
+        try { saved = JSON.parse(localStorage.getItem('ef_user') || 'null'); } catch { saved = null; }
+        if (!noNetwork || !saved) {
+          document.getElementById('view').innerHTML =
+            '<div class="text-center py-20 text-sm text-slate-500">Redirecting to login… ' +
+            '<a href="/login.html" class="text-indigo-600 font-semibold hover:underline">Click here</a> if nothing happens.</div>';
+          window.location.replace('/login.html');
+          return;
+        }
+        user = saved;
       }
       App.user = user;
       App.renderUserChrome();
       // Accounts created with Google don't have an institution/programme yet — ask once first
-      if (!user.profile_complete) await App.completeProfile();
+      if (!user.profile_complete && navigator.onLine) await App.completeProfile();
       window.addEventListener('hashchange', App.route);
       App.initOffline();
       App.startReminderLoop();
@@ -123,6 +132,8 @@ const App = {
 
   async logout() {
     try { await API.post('/api/auth/logout'); } catch { /* leaving anyway */ }
+    // Don't leave this account's details or study plan behind on a shared device
+    try { ['ef_user', 'ef_plan', 'ef_roadmaps_cache'].forEach(k => localStorage.removeItem(k)); } catch { /* ignore */ }
     location.href = '/login.html';
   },
 
@@ -467,19 +478,23 @@ function navVisible(n) { return !n.admin || (App.user && App.user.role === 'admi
 
 /* ---------- premium (EduFlex Plus) ---------- */
 
+// Where students write for Plus activation and support (same as the Privacy Policy contact).
+const SUPPORT_EMAIL = 'israelmusk00@gmail.com';
+
 // Display prices — payments are not connected yet (admins grant Plus manually).
 const PLANS = [
   { id: 'monthly', name: 'Monthly', price: 'KES 129', per: 'per month' },
   { id: 'semester', name: 'Semester', price: 'KES 449', per: 'per 4 months', note: 'Save 13%', best: true },
 ];
+// [icon, title, what it does, where it lives] — keep descriptions true to what the code does.
 const PLUS_FEATURES = [
-  ['insights', 'Smart Insights', 'Academic risk prediction with full explanations and weekly trends'],
-  ['sparkle', 'Smart recommendations', 'What to study next, added to your plan in one tap'],
-  ['roadmaps', 'Unlimited AI roadmaps', 'Claude builds a roadmap for any unit — 30 AI builds a month (free: 1 roadmap, 3 AI builds)'],
-  ['recovery', 'Missed-session recovery', 'EduFlex finds new slots for sessions you missed'],
-  ['bell', 'Alarm reminders', 'Sound + phone notifications (free: in-app only)'],
-  ['offline', 'Offline mode', 'Your study plan and focus timer without data'],
-  ['resources', 'Quality filters', 'Jump straight to "Highly recommended" notes & past papers'],
+  ['insights', 'Smart Insights', 'See which deadlines you are at risk of missing and why, plus a weekly report: hours studied, sessions completed, best study day and streak.', '#/insights'],
+  ['sparkle', 'Smart recommendations', 'EduFlex suggests what to study next and a free time slot to do it in. Add it to your schedule in one tap.', '#/insights'],
+  ['roadmaps', 'Unlimited roadmaps', 'Create a learning roadmap for every unit you take (free plan: 1). Includes up to 30 AI-built roadmaps a month (free plan: 3).', '#/roadmaps'],
+  ['recovery', 'Missed-session recovery', 'Missed a study session? EduFlex finds free slots in the next 7 days and reschedules it in one tap.', '#/schedule'],
+  ['bell', 'Alarm reminders', 'Reminders play a sound and show a phone notification while EduFlex is open (free plan: in-app message only).', '#/profile'],
+  ['offline', 'Offline mode', 'Open your saved study plan and upcoming deadlines without internet or data.', '#/dashboard'],
+  ['resources', 'Library quality filters', 'Show only "Highly recommended" notes and past papers, or sort the library by quality score.', '#/resources'],
 ];
 
 function proBadge() { return '<span class="pro-badge">PRO</span>'; }
