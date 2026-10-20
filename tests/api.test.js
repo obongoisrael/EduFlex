@@ -647,6 +647,24 @@ function check(name, cond, detail = '') {
   r = await api('POST', '/api/auth/login', { email: onlyGoogle, password: 'whatever123' });
   check('password login on a Google-only account points to Google', r.status === 400 && r.data.google_only === true);
 
+  /* ===================== Owner admin (EDUFLEX_ADMIN_EMAILS) ===================== */
+
+  // 53. The owner's email becomes admin once confirmed — not before
+  const ownerEmail = 'owner@eduflex-test.ac.ke';
+  await api('POST', '/api/auth/logout');
+  r = await api('POST', '/api/auth/register', {
+    first_name: 'Owner', last_name: 'Person', email: ownerEmail, password: 'Kilimanjaro2026', institution: 'EduFlex', programme: 'Admin',
+  });
+  check('owner account registered (unconfirmed, not admin yet)', r.status === 201
+    && db.prepare('SELECT role FROM users WHERE email = ?').get(ownerEmail)?.role === 'student', `(got ${r.status} ${JSON.stringify(r.data)})`);
+  await confirmEmail(ownerEmail);
+  r = await api('GET', '/api/auth/me');
+  check('owner email becomes admin after confirming', r.data.user.role === 'admin');
+  r = await api('GET', '/api/admin/stats');
+  check('owner can open the admin area', r.status === 200);
+  r = await api('POST', '/api/auth/login', { email: studentEmail, password: 'Changed123' });
+  check('other accounts are not promoted', r.status !== 200 || r.data.user.role !== 'admin');
+
   console.log(`\nResults: ${passed} passed, ${failed} failed\n`);
   process.exit(failed ? 1 : 0);
 })().catch(err => { console.error('Test runner error:', err.message); process.exit(1); });

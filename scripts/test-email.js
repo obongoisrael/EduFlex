@@ -51,6 +51,8 @@ const to = process.argv[2];
     console.error(`✗ ${hints[err.code] || err.message}`);
     if (hints[err.code]) console.error(`  (details: ${err.message})`);
     console.error('');
-    process.exit(1);
+    // exitCode (not process.exit) lets open network handles close first — avoids a
+    // libuv assertion crash on Windows right after a fetch
+    process.exitCode = 1;
   }
 })();

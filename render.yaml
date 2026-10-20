@@ -47,6 +47,9 @@ services:
       # Email over HTTPS (works where SMTP ports are blocked, e.g. the free plan)
       - key: BREVO_API_KEY
         sync: false
+      # Your email(s): become admin on sign-in (no shell needed)
+      - key: EDUFLEX_ADMIN_EMAILS
+        sync: false
       # Free plan only (no disk): continuous database backup to S3-compatible storage
       - key: LITESTREAM_REPLICA_URL
         sync: false

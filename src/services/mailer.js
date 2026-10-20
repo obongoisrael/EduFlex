@@ -131,9 +131,13 @@ async function sendPasswordResetEmail(user, link) {
   });
 }
 
-/** Check the provider login without sending anything (used by `npm run test-email`). */
+/**
+ * Check the provider login without sending anything (used by `npm run test-email`).
+ * Brevo keys can be limited to sending only (no access to account details), so for
+ * Brevo the real check is the test email itself.
+ */
 async function verifyConnection() {
-  if (brevoConfigured()) return brevoRequest('/account');
+  if (brevoConfigured()) return true;
   return getTransport().verify();
 }
 

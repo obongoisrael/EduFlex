@@ -76,9 +76,25 @@ function startSession(req, userId) {
       if (err) return reject(err);
       req.session.userId = userId;
       db.prepare('UPDATE users SET last_login_at = ?, updated_at = ? WHERE id = ?').run(nowISO(), nowISO(), userId);
+      promoteOwnerAdmin(userId);
       resolve();
     });
   });
+}
+
+/**
+ * Owner admins: accounts whose email is listed in EDUFLEX_ADMIN_EMAILS (comma-separated)
+ * become admins when they sign in — for hosts without a shell to run `npm run make-admin`.
+ * Only applies to confirmed emails, so nobody can claim an admin address they don't own.
+ */
+function promoteOwnerAdmin(userId) {
+  const owners = (process.env.EDUFLEX_ADMIN_EMAILS || '').split(',').map(normEmail).filter(Boolean);
+  if (!owners.length) return;
+  const u = db.prepare('SELECT email, role, email_verified_at FROM users WHERE id = ?').get(userId);
+  if (u && u.email_verified_at && u.role !== 'admin' && owners.includes(u.email)) {
+    db.prepare("UPDATE users SET role = 'admin', updated_at = ? WHERE id = ?").run(nowISO(), userId);
+    console.log(`Granted admin to owner account ${u.email} (EDUFLEX_ADMIN_EMAILS).`);
+  }
 }
 
 /** Sign out every device for a user (after a password reset). */

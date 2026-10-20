@@ -90,6 +90,7 @@ async function waitForServer(url, server, ms = 20000) {
     APP_URL: `http://localhost:${port}`,
     EDUFLEX_SKIP_MX_CHECK: '1', // test domains have no real mail servers
     EDUFLEX_REQUIRE_EDU_EMAIL: '', // default: any email is allowed
+    EDUFLEX_ADMIN_EMAILS: 'owner@eduflex-test.ac.ke', // owner-admin auto-promotion (see auth.js)
     // Google sign-in against a local stub (never the real Google)
     GOOGLE_CLIENT_ID: 'eduflex-test.apps.googleusercontent.com',
     GOOGLE_CLIENT_SECRET: 'test-secret',
