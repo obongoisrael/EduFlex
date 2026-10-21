@@ -3,7 +3,7 @@
  * Caches the app shell so the app opens without internet; live data comes
  * from localStorage snapshots the app saves while online.
  */
-const CACHE = 'eduflex-shell-v7';
+const CACHE = 'eduflex-shell-v8';
 // Styling (Tailwind) and the font load from these hosts; cached too so the app is styled offline.
 const CDN_HOSTS = ['cdn.tailwindcss.com', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 const SHELL = [
@@ -65,5 +65,16 @@ self.addEventListener('fetch', (e) => {
       })
       .catch(() => caches.match(e.request, { ignoreSearch: true })
         .then(hit => hit || caches.match('/app.html')))
+  );
+});
+
+// Tapping a reminder notification brings EduFlex to the front (or opens it).
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      const open = list.find(c => new URL(c.url).pathname === '/app.html');
+      return open ? open.focus() : self.clients.openWindow('/app.html#/dashboard');
+    })
   );
 });

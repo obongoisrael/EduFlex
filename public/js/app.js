@@ -242,10 +242,11 @@ const App = {
       : `${r.title} starts ${r.minutes_before === 0 ? 'now' : 'in ' + r.minutes_before + ' minutes'}.`;
 
     const prefs = App.user.notification_preferences || {};
-    if (App.isPlus() && prefs.browser && 'Notification' in window && Notification.permission === 'granted') {
-      new Notification('EduFlex', { body: msg });
+    if (App.isPlus() && prefs.browser) App.showNotification(msg);
+    if (App.isPlus() && prefs.sound !== false) { // free plan: in-app reminder only
+      App.playBeep();
+      try { navigator.vibrate?.([300, 150, 300, 150, 300]); } catch {}
     }
-    if (App.isPlus() && prefs.sound !== false) App.playBeep(); // free plan: in-app reminder only
 
     openModal('Reminder', `
       <p class="text-sm text-slate-700">${esc(msg)}</p>
@@ -265,13 +266,34 @@ const App = {
 
   saveReminderState() { localStorage.setItem('ef_reminders', JSON.stringify(App._reminderState)); },
 
+  /** Phone/desktop notification. Android Chrome only allows these through the service
+   *  worker (new Notification() throws there), so try that first. Never throws. */
+  async showNotification(body) {
+    try {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      const opts = { body, icon: '/brand/eduflex-icon-192.png', badge: '/brand/eduflex-icon-192.png', tag: 'eduflex-reminder', renotify: true };
+      const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : null;
+      if (reg) await reg.showNotification('EduFlex', opts);
+      else new Notification('EduFlex', opts);
+    } catch { /* the in-app reminder still shows */ }
+  },
+
+  /** Alarm: three rising chimes, loud enough to hear across a room. */
   playBeep() {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = ctx.createOscillator(), gain = ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.frequency.value = 880; gain.gain.value = 0.06;
-      osc.start(); osc.stop(ctx.currentTime + 0.4);
+      ctx.resume?.();
+      [0, 0.45, 0.9].forEach((t, i) => {
+        const osc = ctx.createOscillator(), gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.value = [784, 988, 1175][i];
+        osc.connect(gain); gain.connect(ctx.destination);
+        const at = ctx.currentTime + t;
+        gain.gain.setValueAtTime(0.0001, at);
+        gain.gain.exponentialRampToValueAtTime(0.5, at + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.4);
+        osc.start(at); osc.stop(at + 0.42);
+      });
     } catch { /* no audio available */ }
   },
 
