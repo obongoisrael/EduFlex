@@ -482,10 +482,55 @@ function navVisible(n) { return !n.admin || (App.user && App.user.role === 'admi
 const SUPPORT_EMAIL = 'israelmusk00@gmail.com';
 
 // Display prices — payments are not connected yet (admins grant Plus manually).
-const PLANS = [
-  { id: 'monthly', name: 'Monthly', price: 'KES 129', per: 'per month' },
-  { id: 'semester', name: 'Semester', price: 'KES 449', per: 'per 4 months', note: 'Save 13%', best: true },
+// Monthly price per country, set for local spending power rather than a straight
+// currency conversion. The 4-month plan is always 4 months less SEMESTER_DISCOUNT.
+const SEMESTER_DISCOUNT = 0.15;
+const PRICE_REGIONS = [
+  { code: 'KE', name: 'Kenya', cur: 'KES', monthly: 99, pay: 'M-Pesa' },
+  { code: 'UG', name: 'Uganda', cur: 'UGX', monthly: 2900, pay: 'MTN MoMo or Airtel Money' },
+  { code: 'TZ', name: 'Tanzania', cur: 'TZS', monthly: 2000, pay: 'M-Pesa, Airtel Money or Tigo Pesa' },
+  { code: 'RW', name: 'Rwanda', cur: 'RWF', monthly: 1000, pay: 'MTN MoMo or Airtel Money' },
+  { code: 'NG', name: 'Nigeria', cur: 'NGN', monthly: 1200, pay: 'card, bank transfer or USSD' },
+  { code: 'GH', name: 'Ghana', cur: 'GHS', monthly: 10, pay: 'MTN MoMo, Telecel Cash or card' },
+  { code: 'ZA', name: 'South Africa', cur: 'ZAR', monthly: 19, pay: 'card or instant EFT' },
+  { code: 'ET', name: 'Ethiopia', cur: 'ETB', monthly: 100, pay: 'telebirr' },
+  { code: 'EG', name: 'Egypt', cur: 'EGP', monthly: 40, pay: 'card or mobile wallet' },
+  { code: 'ZM', name: 'Zambia', cur: 'ZMW', monthly: 20, pay: 'MTN MoMo or Airtel Money' },
+  { code: 'AF', name: 'Other African countries', cur: 'USD', monthly: 0.99, pay: 'mobile money or card' },
+  { code: 'WW', name: 'Rest of the world', cur: 'USD', monthly: 2.99, pay: 'card' },
 ];
+// Time zone → country, so students see their own currency without being asked.
+const TZ_REGION = {
+  'Africa/Nairobi': 'KE', 'Africa/Kampala': 'UG', 'Africa/Dar_es_Salaam': 'TZ', 'Africa/Kigali': 'RW',
+  'Africa/Lagos': 'NG', 'Africa/Accra': 'GH', 'Africa/Johannesburg': 'ZA', 'Africa/Addis_Ababa': 'ET',
+  'Africa/Cairo': 'EG', 'Africa/Lusaka': 'ZM',
+};
+function priceRegion() {
+  let saved = null;
+  try { saved = localStorage.getItem('ef_region'); } catch {}
+  let code = PRICE_REGIONS.some(r => r.code === saved) ? saved : null;
+  if (!code) {
+    let tz = '';
+    try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch {}
+    code = TZ_REGION[tz] || (tz.startsWith('Africa/') ? 'AF' : 'WW');
+  }
+  return PRICE_REGIONS.find(r => r.code === code);
+}
+function setPriceRegion(code) { try { localStorage.setItem('ef_region', code); } catch {} }
+function fmtMoney(cur, n) {
+  const whole = Number.isInteger(n) && cur !== 'USD';
+  return `${cur} ${n.toLocaleString('en', { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: whole ? 0 : 2 })}`;
+}
+function plansFor(region) {
+  const { cur, monthly } = region;
+  const decimals = cur === 'USD' ? 100 : 1;
+  const semester = Math.round(monthly * 4 * (1 - SEMESTER_DISCOUNT) * decimals) / decimals;
+  return [
+    { id: 'monthly', name: 'Monthly', price: fmtMoney(cur, monthly), per: 'per month' },
+    { id: 'semester', name: '4 months', price: fmtMoney(cur, semester), per: 'per 4 months',
+      note: `Save ${Math.round(SEMESTER_DISCOUNT * 100)}%`, sub: `${fmtMoney(cur, Math.round(semester / 4 * decimals) / decimals)} a month`, best: true },
+  ];
+}
 // [icon, title, what it does, where it lives] — keep descriptions true to what the code does.
 const PLUS_FEATURES = [
   ['insights', 'Smart Insights', 'See which deadlines you are at risk of missing and why, plus a weekly report: hours studied, sessions completed, best study day and streak.', '#/insights'],

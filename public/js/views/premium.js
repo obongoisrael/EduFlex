@@ -7,6 +7,8 @@ Views.premium = async (el) => {
   const u = App.user;
   const plus = App.isPlus();
   const state = (Views.premium._state ||= { plan: 'semester' });
+  const region = priceRegion();
+  const PLANS = plansFor(region);
 
   // Free vs Plus — limits must match the server (FREE_ROADMAPS, AI_LIMITS, requirePlus routes)
   const YES = `<span class="inline-block w-5 h-5 text-emerald-500 [&_svg]:w-5 [&_svg]:h-5">${icon('check')}</span>`;
@@ -82,6 +84,12 @@ Views.premium = async (el) => {
 
       ${plus ? '' : `
         ${section('Choose a plan')}
+        <label class="flex items-center justify-between gap-3 mb-3 px-1 text-sm">
+          <span class="text-slate-500">Prices for</span>
+          <select id="regionSel" class="inp !w-auto !py-2 !text-sm">
+            ${PRICE_REGIONS.map(r => `<option value="${r.code}" ${r.code === region.code ? 'selected' : ''}>${esc(r.name)} (${r.cur})</option>`).join('')}
+          </select>
+        </label>
         <div class="grid grid-cols-2 gap-3">
           ${PLANS.map(p => `
             <button type="button" data-plan="${p.id}" class="card p-4 text-left relative transition ${state.plan === p.id ? '!border-indigo-500 ring-2 ring-indigo-500/30' : ''}">
@@ -89,16 +97,17 @@ Views.premium = async (el) => {
               <span class="block text-xs font-semibold text-slate-500">${esc(p.name)}</span>
               <span class="block text-xl font-extrabold text-slate-900 mt-1">${esc(p.price)}</span>
               <span class="block text-[11px] text-slate-400">${esc(p.per)}</span>
+              ${p.sub ? `<span class="block text-[11px] text-slate-500 mt-0.5">${esc(p.sub)}</span>` : ''}
               ${p.note ? `<span class="inline-block mt-2 text-[10px] font-bold text-emerald-700 bg-emerald-50 rounded-md px-1.5 py-0.5">${esc(p.note)}</span>` : ''}
             </button>`).join('')}
         </div>
         <button id="payBtn" class="btn btn-primary btn-block !py-4 !text-base !rounded-2xl mt-4">Get Plus</button>
-        <p class="text-[11px] text-slate-400 text-center mt-2">Prices in Kenya Shillings. No automatic renewal.</p>`}
+        <p class="text-[11px] text-slate-400 text-center mt-2">Prices in ${esc(region.cur)}. No automatic renewal.</p>`}
 
       ${section('Good to know')}
       <div class="card divide-y divide-slate-100 text-sm">
         ${[
-          ['How do I pay?', 'M-Pesa checkout is coming soon. Until then, EduFlex activates Plus on your account for you: tap Get Plus to see how.'],
+          ['How do I pay?', `Paying in the app with ${esc(region.pay)} is coming soon. Until then, EduFlex activates Plus on your account for you: tap Get Plus to see how.`],
           ['Does it renew automatically?', 'No. Plus runs for the period you choose and nothing is charged automatically when it ends.'],
           ['What happens when Plus ends?', 'You keep everything: courses, deadlines, schedule, roadmaps and uploads. Plus features simply lock again, and new roadmaps follow the free limit.'],
           ['Is my data private?', 'Other students only ever see your initials and institution. See the <a href="/privacy.html" class="text-indigo-600 font-semibold hover:underline">Privacy Policy</a>.'],
@@ -112,6 +121,8 @@ Views.premium = async (el) => {
       </div>
     </div>`;
 
+  const sel = document.getElementById('regionSel');
+  if (sel) sel.onchange = () => { setPriceRegion(sel.value); Views.premium(el); };
   el.querySelectorAll('[data-plan]').forEach(b => b.onclick = () => { state.plan = b.dataset.plan; Views.premium(el); });
   const pay = document.getElementById('payBtn');
   if (pay) pay.onclick = () => {
@@ -121,12 +132,13 @@ Views.premium = async (el) => {
         You chose the <strong>${esc(p.name)}</strong> plan: <strong>${esc(p.price)}</strong> ${esc(p.per)}.
       </p>
       <p class="text-sm text-slate-600 leading-relaxed mt-3">
-        M-Pesa checkout is coming soon. For now, EduFlex activates Plus for you: send us a request and we'll
+        Paying in the app with ${esc(region.pay)} is coming soon. For now, EduFlex activates Plus for you: send us a request and we'll
         reply with how to pay. Your account email (<strong>${esc(u.email)}</strong>) and plan are filled in for you.
       </p>
       <a class="btn btn-primary btn-block mt-6" onclick="closeModal()"
          href="mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(`EduFlex Plus request: ${p.name} plan`)}&body=${encodeURIComponent(
-           `Hi EduFlex team,\n\nPlease activate EduFlex Plus on my account.\n\nAccount email: ${u.email}\nPlan: ${p.name} (${p.price} ${p.per})\n\nThank you.`)}">Request Plus by email</a>
+           `Hi EduFlex team,\n\nPlease activate EduFlex Plus on my account.\n\nAccount email: ${u.email}\nPlan: ${p.name} (${p.price} ${p.per})
+Country: ${region.name}\n\nThank you.`)}">Request Plus by email</a>
       <button class="btn btn-ghost btn-block mt-2" onclick="closeModal()">Not now</button>`);
   };
 };

@@ -3,7 +3,7 @@
  * Caches the app shell so the app opens without internet; live data comes
  * from localStorage snapshots the app saves while online.
  */
-const CACHE = 'eduflex-shell-v6';
+const CACHE = 'eduflex-shell-v7';
 // Styling (Tailwind) and the font load from these hosts; cached too so the app is styled offline.
 const CDN_HOSTS = ['cdn.tailwindcss.com', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 const SHELL = [
